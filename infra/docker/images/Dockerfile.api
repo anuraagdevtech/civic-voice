@@ -12,6 +12,9 @@ COPY packages/stream/package.json       packages/stream/
 COPY packages/analytics/package.json    packages/analytics/
 COPY packages/observability/package.json packages/observability/
 COPY packages/sdk/package.json          packages/sdk/
+COPY packages/nlp/package.json          packages/nlp/
+COPY packages/geo/package.json          packages/geo/
+COPY packages/ingest/package.json       packages/ingest/
 COPY services/api/package.json          services/api/
 # --prod drops the dev dependencies; --frozen-lockfile fails rather than silently resolving
 # something other than what CI tested.

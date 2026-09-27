@@ -41,6 +41,11 @@ stringData:
   CIVIC_TOKEN_SECRET: ''
   CIVIC_IDENTITY_PEPPER: ''
   CIVIC_PSEUDONYM_SALT_ROOT: ''
+  # Keys the analytics projection's hashes of comment ids and pseudonyms (ADR-0008). KMS-held.
+  CIVIC_ANALYTICS_KEY: ''
+  # Optional. With it, uncertain comments are re-labelled and digests written by the large model;
+  # without it, everything runs on the in-house model and digests are extractive (ADR-0011).
+  ANTHROPIC_API_KEY: ''
   CIVIC_CATALOGUE_URL: ''
   CIVIC_SHARD_URLS: ''
   REDIS_URL: ''

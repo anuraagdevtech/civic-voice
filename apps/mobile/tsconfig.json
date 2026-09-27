@@ -5,7 +5,9 @@
     "jsx": "react-jsx",
     "types": [],
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "index.ts"]
 }

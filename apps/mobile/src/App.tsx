@@ -11,15 +11,18 @@ import {
   type Session,
 } from './storage.ts';
 import { TopicCard } from './screens/Decisions.tsx';
+import { DiscussScreen } from './screens/Discuss.tsx';
+import { Onboarding } from './screens/Onboarding.tsx';
 import { RtiScreen } from './screens/Rti.tsx';
 import { colors, styles } from './theme.ts';
 
-type Tab = 'decisions' | 'rti';
+type Tab = 'discuss' | 'decisions' | 'rti';
+const TAB_LABELS: Record<Tab, string> = { discuss: 'Near me', decisions: 'Decisions', rti: 'RTI' };
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('decisions');
+  const [tab, setTab] = useState<Tab>('discuss');
   const [topics, setTopics] = useState<Topic[]>([]);
   const [mine, setMine] = useState<MySentiment[]>([]);
   const [pending, setPending] = useState(0);
@@ -56,43 +59,19 @@ export function App() {
     );
   }
 
-  if (session === null) {
+  if (session === null || session.citizenId === '') {
     return (
       <View style={styles.screen}>
         <StatusBar style="light" />
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.h1}>Civic Voice</Text>
-          <Text style={styles.meta}>
-            Public sentiment on government decisions, the money actually spent, and the questions we
-            got answered by asking.
-          </Text>
-          <View style={[styles.card, { marginTop: 16 }]}>
-            <Text style={styles.h2}>Choose your area to begin</Text>
-            <Text style={styles.meta}>
-              We store no name, no phone number and no government ID. Age and similar details are
-              optional, kept as broad bands, and any group of fewer than 25 people is withheld from
-              every published figure.
-            </Text>
-            <Pressable
-              style={[styles.primary, { marginTop: 14 }]}
-              onPress={() => {
-                void (async () => {
-                  // The full picker walks the region hierarchy; this is the entry point into it.
-                  const country = await client.region(1);
-                  const next: Session = {
-                    citizenId: '',
-                    regionId: country.id,
-                    regionName: country.name,
-                  };
-                  await saveSession(next);
-                  setSession(next);
-                })();
-              }}
-            >
-              <Text style={styles.primaryText}>Choose your area</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
+        <Onboarding
+          onDone={(next) => {
+            void (async () => {
+              await saveSession(next);
+              setSession(next);
+              await refresh(next);
+            })();
+          }}
+        />
       </View>
     );
   }
@@ -114,7 +93,7 @@ export function App() {
       )}
 
       <View style={[styles.tabBar, { marginTop: 12 }]}>
-        {(['decisions', 'rti'] as const).map((value) => (
+        {(['discuss', 'decisions', 'rti'] as const).map((value) => (
           <Pressable
             key={value}
             onPress={() => setTab(value)}
@@ -123,13 +102,18 @@ export function App() {
             style={[styles.tab, tab === value ? styles.tabActive : null]}
           >
             <Text style={[styles.tabText, tab === value ? styles.tabTextActive : null]}>
-              {value === 'decisions' ? 'Decisions' : 'RTI requests'}
+              {TAB_LABELS[value]}
             </Text>
           </Pressable>
         ))}
       </View>
 
-      {tab === 'decisions' ? (
+      {tab === 'discuss' ? (
+        <DiscussScreen
+          regionId={session.regionId}
+          regionPath={session.regionPath ?? [session.regionId]}
+        />
+      ) : tab === 'decisions' ? (
         <ScrollView contentContainerStyle={styles.content}>
           {topics.length === 0 ? (
             <Text style={styles.suppressed}>No decisions published for your area yet.</Text>

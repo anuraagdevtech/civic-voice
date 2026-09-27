@@ -95,7 +95,8 @@ export const registerCitizenResponse = z.object({
 });
 
 export const updateDemographicsRequest = z.object({
-  demographics: demographicsSchema,
+  /** Replaces the stored bands wholesale when present; absent leaves them as they are. */
+  demographics: demographicsSchema.optional(),
   region_id: regionId.optional(),
   locale: z.enum(LOCALES).optional(),
   /** From POST /v1/geo/resolve: marks the new home region as confirmed by device location. */

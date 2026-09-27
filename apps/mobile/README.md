@@ -27,11 +27,15 @@ view:
 
 | Screen | Purpose |
 | --- | --- |
-| `Onboarding` | Region picker and the optional demographic bands |
+| `Onboarding` | Drill down from state to ward, then register (no name, phone or ID) |
+| `Discuss` (“Near me”) | Hot topics where the citizen lives, the digest of what people think, the thread, posting, and the open-jobs count |
 | `Decisions` | Topics for the citizen's region, with the mood scale and published aggregates |
-| `Money` | Allocated vs. released vs. spent, per scheme, across their region path |
 | `Rti` | Filed requests, statutory deadlines, and the next action |
 
-The build here is not wired into CI: Expo needs a native toolchain, and adding an Android SDK to
-every PR run would cost more than it catches. Typecheck covers the contract, which is the part that
-actually breaks.
+Not yet on the phone, and in the web app: device-location confirmation (it needs `expo-location`),
+voting and reporting on comments, raising a local issue, the youth/farmer insights, the jobs list,
+indicators and the tax ledger.
+
+The native build is not wired into CI: Expo needs a native toolchain, and adding an Android SDK to
+every PR run would cost more than it catches. CI does typecheck this app against the shared SDK, which
+covers the contract — the part that actually breaks.

@@ -1,3 +1,6 @@
+# The ingestor: polls government and news sources politely (packages/ingest). One replica per region,
+# because politeness is per host and two replicas would be twice as impolite.
+#
 # Node 22 runs TypeScript directly via type stripping, so there is no build step and no transpiler
 # config to keep in sync between dev and production (ADR-0006). The image ships the source.
 FROM node:22-alpine AS deps
@@ -15,10 +18,10 @@ COPY packages/sdk/package.json          packages/sdk/
 COPY packages/nlp/package.json          packages/nlp/
 COPY packages/geo/package.json          packages/geo/
 COPY packages/ingest/package.json       packages/ingest/
-COPY services/worker/package.json          services/worker/
+COPY services/ingestor/package.json     services/ingestor/
 # --prod drops the dev dependencies; --frozen-lockfile fails rather than silently resolving
 # something other than what CI tested.
-RUN pnpm install --frozen-lockfile --prod --filter @civic-voice/worker...
+RUN pnpm install --frozen-lockfile --prod --filter @civic-voice/ingestor...
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
@@ -28,9 +31,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages ./packages
 COPY --from=deps /app/services ./services
 COPY packages ./packages
-COPY services/worker ./services/worker
+COPY services/ingestor ./services/ingestor
 COPY package.json pnpm-workspace.yaml ./
 USER civic
 # Exec form, so the process is PID 1 and receives SIGTERM directly — which is what makes the
 # graceful drain in main.ts actually run during a scale-down.
-CMD ["node", "services/worker/src/main.ts"]
+CMD ["node", "services/ingestor/src/main.ts"]

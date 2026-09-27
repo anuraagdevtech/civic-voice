@@ -228,6 +228,20 @@ describe('normalisation', () => {
       'scheme',
     );
     assert.equal(classifySubject('government_order', 'Revised pay scales for teachers'), null);
+    // News and gazette notifications stay what they are, whatever they are about.
+    assert.equal(
+      classifyKind(spec('indianexpress-hyderabad'), 'Uppal flyover works to finish by March', null),
+      'news',
+    );
+    assert.equal(classifySubject('news', 'Uppal flyover works to finish by March'), 'project');
+    assert.equal(
+      classifyKind(spec('egazette-extraordinary'), 'S.O. 4123(E) — widening of NH-65', null),
+      'gazette_notification',
+    );
+    assert.equal(
+      classifyKind(spec('pib-releases'), 'S.O. 88(E) published for highway widening', null),
+      'gazette_notification',
+    );
     assert.equal(classifySubject('job_notification', 'Recruitment for metro rail project'), null);
     assert.equal(isDiscussable('tender', null), false);
     assert.equal(isDiscussable('government_order', 'Ms'), true);

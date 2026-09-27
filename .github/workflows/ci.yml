@@ -88,6 +88,9 @@ jobs:
         with: { node-version: '22', cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @civic-voice/web build
+      - name: Typecheck the mobile app
+        # Same SDK and contracts as the web app, so an API change that breaks the phone fails here.
+        run: pnpm --filter @civic-voice/mobile exec tsc -p tsconfig.json --noEmit
       - name: Enforce the bundle budget
         # The web app is the first thing a citizen on a 2G connection waits for. A budget that is
         # only checked by hand is not a budget.
@@ -118,6 +121,14 @@ jobs:
         with:
           context: .
           file: infra/docker/images/Dockerfile.worker
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Ingestor image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/images/Dockerfile.ingestor
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max

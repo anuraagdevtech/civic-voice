@@ -1,6 +1,25 @@
 import { useEffect, useState } from 'react';
-import { AGE_BANDS, GENDERS, LOCALES, URBANITY, type Region } from '@civic-voice/sdk';
+import {
+  AGE_BANDS,
+  GENDERS,
+  LOCALES,
+  OCCUPATION_BANDS,
+  URBANITY,
+  type Region,
+} from '@civic-voice/sdk';
 import { client } from '../api.ts';
+import { LocationConfirm } from './LocationConfirm.tsx';
+
+const OCCUPATION_LABELS: Record<string, string> = {
+  agriculture: 'Farming / agriculture',
+  informal_labour: 'Daily wage / informal work',
+  salaried_private: 'Private job',
+  government: 'Government job',
+  self_employed: 'Self-employed / business',
+  student: 'Student',
+  homemaker: 'Homemaker',
+  retired_other: 'Retired / other',
+};
 
 /**
  * Region and demographics.
@@ -19,6 +38,9 @@ export function RegionPicker({
   const [ageBand, setAgeBand] = useState('');
   const [gender, setGender] = useState('');
   const [urbanity, setUrbanity] = useState('');
+  const [occupation, setOccupation] = useState('');
+  /** Set when the chosen region came from the device's location and the person confirmed it. */
+  const [attestation, setAttestation] = useState<string | null>(null);
   const [locale, setLocale] = useState('en');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +60,7 @@ export function RegionPicker({
   const pick = async (depth: number, region: Region) => {
     const nextChosen = [...chosen.slice(0, depth), region];
     setChosen(nextChosen);
+    setAttestation(null);
     try {
       const children = await client.childRegions(region.id);
       setLevels([
@@ -62,7 +85,9 @@ export function RegionPicker({
           ...(ageBand ? { age_band: ageBand as never } : {}),
           ...(gender ? { gender: gender as never } : {}),
           ...(urbanity ? { urbanity: urbanity as never } : {}),
+          ...(occupation ? { occupation_band: occupation as never } : {}),
         },
+        ...(attestation ? { location_attestation: attestation } : {}),
       });
       onRegistered(result.citizen.id, region);
     } catch {
@@ -72,15 +97,43 @@ export function RegionPicker({
     }
   };
 
-  const LABELS = ['State or union territory', 'District', 'Constituency', 'Ward or panchayat'];
+  // Levels are positions, not kinds: a city (Greater Hyderabad) sits where a district would.
+  const LABELS = [
+    'State or union territory',
+    'District or city',
+    'Constituency or ward',
+    'Ward or panchayat',
+  ];
+
+  /** Rebuild the drop-downs along a resolved path, so a located ward shows as chosen. */
+  const adopt = async (path: number[]) => {
+    const regions = await Promise.all(path.slice(1).map((id) => client.region(id)));
+    const lists = await Promise.all(path.slice(0, -1).map((id) => client.childRegions(id)));
+    setLevels(lists.map((l) => l.items));
+    setChosen(regions);
+  };
 
   return (
     <section className="card">
       <h2>Where do you live?</h2>
       <p className="meta">
-        This decides which decisions you are shown and which area your response counts towards. We
-        store no name, no phone number and no government ID.
+        This decides which decisions you are shown, which local discussions you can take part in,
+        and which area your response counts towards. We store no name, no phone number and no
+        government ID.
       </p>
+
+      <LocationConfirm
+        onConfirmed={async (region, token) => {
+          await adopt(region.path);
+          setAttestation(token);
+        }}
+      />
+      {attestation && (
+        <p className="notice">
+          <strong>📍 Located.</strong> Your comments will show that your area was confirmed from
+          your device, not only chosen from a list.
+        </p>
+      )}
 
       {levels.map((options, depth) => (
         <div key={depth} style={{ marginBottom: 10 }}>
@@ -145,6 +198,18 @@ export function RegionPicker({
             {URBANITY.map((u) => (
               <option key={u} value={u}>
                 {u}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="k">Work</span>
+          <br />
+          <select value={occupation} onChange={(e) => setOccupation(e.target.value)}>
+            <option value="">Prefer not to say</option>
+            {OCCUPATION_BANDS.map((o) => (
+              <option key={o} value={o}>
+                {OCCUPATION_LABELS[o] ?? o}
               </option>
             ))}
           </select>

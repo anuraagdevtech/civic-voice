@@ -28,6 +28,9 @@ spec:
       ports: [{ protocol: TCP, port: 6379 }]
     - to: [{ podSelector: { matchLabels: { app: kafka } } }]
       ports: [{ protocol: TCP, port: 9092 }]
+    # Read-only, for cohort insights (youth, farmers); the worker is the only writer.
+    - to: [{ podSelector: { matchLabels: { app: clickhouse } } }]
+      ports: [{ protocol: TCP, port: 8123 }]
     - to: [{ namespaceSelector: { matchLabels: { name: kube-system } } }]
       ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
     # Note what is absent: no egress to the identity vault. The API never needs it, and a compromised
@@ -52,5 +55,46 @@ spec:
       ports: [{ protocol: TCP, port: 9092 }]
     - to: [{ podSelector: { matchLabels: { app: clickhouse } } }]
       ports: [{ protocol: TCP, port: 8123 }]
+    - to: [{ namespaceSelector: { matchLabels: { name: kube-system } } }]
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+---
+# The worker's one route out of the cluster: HTTPS to the large-model API, used only when
+# ANTHROPIC_API_KEY is set (docs/adr/0011). NetworkPolicy cannot name a domain, so this admits public
+# addresses on 443 and excludes the private ranges; in production put an egress proxy in front with an
+# allow-list of exactly api.anthropic.com. Without the key, delete this policy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: civic-worker-model-egress
+spec:
+  podSelector:
+    matchLabels: { app: civic-worker }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16]
+      ports: [{ protocol: TCP, port: 443 }]
+---
+# The ingestor reads public government and news sites, so it needs the open web on 80/443 — and
+# nothing inside the cluster but the catalogue. It never touches the citizen shards, the cache, the
+# log or the analytical store, so a compromised scraper parsing hostile HTML reaches no citizen data.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: civic-ingestor-egress
+spec:
+  podSelector:
+    matchLabels: { app: civic-ingestor }
+  policyTypes: [Egress]
+  egress:
+    - to: [{ podSelector: { matchLabels: { app: postgres-catalogue } } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16]
+      ports: [{ protocol: TCP, port: 443 }, { protocol: TCP, port: 80 }]
     - to: [{ namespaceSelector: { matchLabels: { name: kube-system } } }]
       ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]

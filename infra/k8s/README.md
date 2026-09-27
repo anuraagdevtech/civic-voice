@@ -8,9 +8,10 @@ services or dedicated operators, not from hand-written StatefulSets.
 | File | What it covers |
 | --- | --- |
 | `api.yaml` | Stateless API, HPA on in-flight requests, PDB, graceful drain |
-| `worker.yaml` | Aggregation pipeline, scaled on **consumer lag** rather than CPU |
+| `worker.yaml` | Aggregation and comment pipelines, scaled on **consumer lag** rather than CPU |
+| `ingestor.yaml` | Polls government and news sources; **exactly one replica**, because politeness is per host |
 | `config.yaml` | Tunables that must be changeable without a redeploy, plus the secret contract |
-| `networkpolicy.yaml` | Default deny; notably the API has **no** route to the identity vault |
+| `networkpolicy.yaml` | Default deny; the API has **no** route to the identity vault, and the ingestor — which parses hostile HTML from the open web — reaches nothing inside the cluster but the catalogue |
 | `clickhouse.yaml` | Analytical store with the tiered hot/cold storage policy |
 
 ## Things worth knowing before deploying this

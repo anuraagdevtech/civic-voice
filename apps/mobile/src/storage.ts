@@ -23,6 +23,8 @@ export interface Session {
   citizenId: string;
   regionId: number;
   regionName: string;
+  /** Root first, inclusive. Absent in sessions saved before it existed; re-fetched when missing. */
+  regionPath?: number[];
 }
 
 export interface QueuedWrite {

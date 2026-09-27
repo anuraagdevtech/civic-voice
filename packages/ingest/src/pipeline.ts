@@ -130,7 +130,11 @@ export function classifyKind(
     }
     return 'job_notification';
   }
+  // The instrument decides the kind; what it is about is `classifySubject`'s question.
   if (goType) return 'government_order';
+  if (spec.kind === 'gazette_notification' || /\b(?:s\.o\.|g\.s\.r\.)\s*\d/.test(t))
+    return 'gazette_notification';
+  if (spec.kind === 'news') return 'news';
   if (SCHEME.test(t)) return 'scheme';
   if (spec.kind === 'project' || PROJECT.test(t)) return 'project';
   return spec.kind;

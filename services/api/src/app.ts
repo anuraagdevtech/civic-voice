@@ -323,9 +323,8 @@ export async function buildApp(deps: AppDeps) {
     const principal = await authenticate(request);
     const input = updateDemographicsRequest.parse(request.body);
 
-    const patch: Parameters<Repositories['citizens']['updateProfile']>[1] = {
-      demographics: input.demographics,
-    };
+    const patch: Parameters<Repositories['citizens']['updateProfile']>[1] = {};
+    if (input.demographics !== undefined) patch.demographics = input.demographics;
     if (input.locale !== undefined) patch.locale = input.locale;
     if (input.region_id !== undefined) {
       const region = await repos.catalogue.getRegion(input.region_id);
