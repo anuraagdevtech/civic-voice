@@ -1,7 +1,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { uuidv7 } from '@civic-voice/core';
-import type { NewComment, NewDocument, Repositories } from '../src/repositories/ports.ts';
+import type {
+  FiscalLineRow,
+  NewComment,
+  NewDocument,
+  Repositories,
+} from '../src/repositories/ports.ts';
 import { REPORTS_TO_HOLD } from '../src/repositories/ports.ts';
 
 /**
@@ -447,6 +452,94 @@ export function runForumContract(name: string, open: () => Promise<Repositories>
           .filter((t) => t.startsWith(run))
           .sort();
         assert.deepEqual(open, [`${run} Open`, `${run} Undated recent`]);
+      } finally {
+        await repos.close();
+      }
+    });
+  });
+
+  describe(`public finance contract: ${name}`, () => {
+    // A year no real file will ever load, so the suite can share a database with seeded figures.
+    const FY = '1999-00';
+    const line = (
+      over: Partial<FiscalLineRow> & Pick<FiscalLineRow, 'region_id'>,
+    ): FiscalLineRow => ({
+      fy: FY,
+      stage: 'BE',
+      category: 'gst',
+      amount: 1_234.56,
+      source_name: 'Budget at a Glance',
+      source_url: 'https://www.indiabudget.gov.in/',
+      provenance: 'official',
+      ...over,
+    });
+    const mine = (rows: FiscalLineRow[]) =>
+      rows
+        .filter((r) => r.fy === FY)
+        .sort((a, b) => a.stage.localeCompare(b.stage) || a.category.localeCompare(b.category));
+
+    test('figures round-trip exactly, paise included', async () => {
+      const repos = await open();
+      try {
+        const tg = (await repos.catalogue.regionByKey('IN-TG'))!.id;
+        await repos.catalogue.upsertFiscalLines([
+          line({ region_id: tg }),
+          line({ region_id: tg, category: 'education', amount: 21_000.05, provenance: 'sample' }),
+        ]);
+        const got = mine(await repos.catalogue.fiscalLines(tg));
+        assert.deepEqual(
+          got.map((r) => [r.category, r.amount, r.provenance]),
+          [
+            ['education', 21_000.05, 'sample'],
+            ['gst', 1_234.56, 'official'],
+          ],
+        );
+        assert.equal(got[0]?.source_url, 'https://www.indiabudget.gov.in/');
+      } finally {
+        await repos.close();
+      }
+    });
+
+    test('a re-published figure replaces the old one; stages are kept apart', async () => {
+      const repos = await open();
+      try {
+        const tg = (await repos.catalogue.regionByKey('IN-TG'))!.id;
+        await repos.catalogue.upsertFiscalLines([
+          line({ region_id: tg, category: 'health', amount: 100 }),
+          line({ region_id: tg, category: 'health', stage: 'RE', amount: 90 }),
+        ]);
+        await repos.catalogue.upsertFiscalLines([
+          line({ region_id: tg, category: 'health', amount: 110, provenance: 'news' }),
+        ]);
+        const health = mine(await repos.catalogue.fiscalLines(tg)).filter(
+          (r) => r.category === 'health',
+        );
+        assert.deepEqual(
+          health.map((r) => [r.stage, r.amount, r.provenance]),
+          [
+            ['BE', 110, 'news'],
+            ['RE', 90, 'official'],
+          ],
+        );
+      } finally {
+        await repos.close();
+      }
+    });
+
+    test("one government's figures are not another's", async () => {
+      const repos = await open();
+      try {
+        const india = (await repos.catalogue.regionByKey('IN'))!.id;
+        const tg = (await repos.catalogue.regionByKey('IN-TG'))!.id;
+        await repos.catalogue.upsertFiscalLines([
+          line({ region_id: india, category: 'customs', amount: 5 }),
+        ]);
+        assert.ok(
+          mine(await repos.catalogue.fiscalLines(tg)).every((r) => r.category !== 'customs'),
+        );
+        assert.ok(
+          mine(await repos.catalogue.fiscalLines(india)).some((r) => r.category === 'customs'),
+        );
       } finally {
         await repos.close();
       }

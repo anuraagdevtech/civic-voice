@@ -11,6 +11,7 @@ import { PgDocumentRepository, PgForumRepository } from './pg-forum.ts';
 import type {
   AuthorityRow,
   BudgetLineRow,
+  FiscalLineRow,
   CatalogueRepository,
   CitizenRepository,
   CitizenRow,
@@ -664,6 +665,53 @@ export class PgCatalogueRepository implements CatalogueRepository {
         [[...regionIds], fy],
       );
       return rows.map(toBudgetLine);
+    });
+  }
+
+  async fiscalLines(regionId: number): Promise<FiscalLineRow[]> {
+    return this.router.catalogue(async (db) => {
+      const { rows } = await db.query<Row>(
+        `SELECT region_id, fy, stage, category, amount_crore, source_name, source_url, provenance
+         FROM civic_catalogue.fiscal_line WHERE region_id = $1
+         ORDER BY fy DESC, stage, category`,
+        [regionId],
+      );
+      return rows.map((r) => ({
+        region_id: Number(r['region_id']),
+        fy: String(r['fy']),
+        stage: String(r['stage']) as FiscalLineRow['stage'],
+        category: String(r['category']) as FiscalLineRow['category'],
+        amount: Number(r['amount_crore']),
+        source_name: String(r['source_name']),
+        source_url: String(r['source_url']),
+        provenance: String(r['provenance']) as FiscalLineRow['provenance'],
+      }));
+    });
+  }
+
+  async upsertFiscalLines(rows: readonly FiscalLineRow[]): Promise<void> {
+    if (rows.length === 0) return;
+    await this.router.catalogue(async (db) => {
+      // One statement for the whole file: a budget is ~30 lines per government and year.
+      await db.query(
+        `INSERT INTO civic_catalogue.fiscal_line
+           (region_id, fy, stage, category, amount_crore, source_name, source_url, provenance)
+         SELECT * FROM unnest($1::bigint[], $2::text[], $3::text[], $4::text[], $5::numeric[],
+                              $6::text[], $7::text[], $8::text[])
+         ON CONFLICT (region_id, fy, stage, category) DO UPDATE SET
+           amount_crore = excluded.amount_crore, source_name = excluded.source_name,
+           source_url = excluded.source_url, provenance = excluded.provenance, updated_at = now()`,
+        [
+          rows.map((r) => r.region_id),
+          rows.map((r) => r.fy),
+          rows.map((r) => r.stage),
+          rows.map((r) => r.category),
+          rows.map((r) => r.amount),
+          rows.map((r) => r.source_name),
+          rows.map((r) => r.source_url),
+          rows.map((r) => r.provenance),
+        ],
+      );
     });
   }
 

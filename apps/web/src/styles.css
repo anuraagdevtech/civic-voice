@@ -586,3 +586,229 @@ input[type='text'] {
     grid-template-columns: 110px 1fr 40px;
   }
 }
+
+/*
+ * Charts. Series colours are the validated categorical slots, stepped for each theme and checked
+ * against THIS app's surfaces (#151b32 dark, #ffffff light) for lightness band, chroma, colour-vision
+ * separation between neighbours, and contrast. Each class sets `--c`, so a mark, its legend swatch and
+ * its tooltip key share one colour; text never wears it.
+ */
+:root {
+  --viz-s1: #3987e5;
+  --viz-s2: #d95926;
+  --viz-s3: #199e70;
+  --viz-s4: #c98500;
+  /* The de-emphasis grey: "the rest" in an emphasis chart. */
+  --viz-muted: #4a5377;
+  --viz-hatch: #7b83a3;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --viz-s1: #2a78d6;
+    --viz-s2: #eb6834;
+    --viz-s3: #1baf7a;
+    --viz-s4: #eda100;
+    --viz-muted: #c3c8d8;
+    --viz-hatch: #8a91a8;
+  }
+}
+.viz-s1 {
+  --c: var(--viz-s1);
+}
+.viz-s2 {
+  --c: var(--viz-s2);
+}
+.viz-s3 {
+  --c: var(--viz-s3);
+}
+.viz-s4 {
+  --c: var(--viz-s4);
+}
+.viz-muted {
+  --c: var(--viz-muted);
+}
+.viz-h {
+  font-size: 14px;
+  margin: 18px 0 6px;
+}
+.viz-dim {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* Ranked bars: one baseline, value at the tip, 4px rounded data-end, square at the baseline. */
+.viz-bar-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 13px;
+  border-radius: 4px;
+}
+.viz-bar-track {
+  display: block;
+  height: 14px;
+  border-left: 1px solid var(--border);
+}
+.viz-bar {
+  display: block;
+  height: 14px;
+  background: var(--c);
+  border-radius: 0 4px 4px 0;
+}
+.viz-bar-value {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.viz-bar-row:hover .viz-bar,
+.viz-bar-row:focus-visible .viz-bar,
+.viz-seg:hover,
+.viz-seg:focus-visible {
+  filter: brightness(1.15);
+}
+
+/* Part-to-whole: one 100% stack, 2px surface gaps between segments. */
+.viz-stack {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  margin: 6px 0;
+}
+.viz-seg {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3px;
+  background: var(--c);
+}
+.viz-seg.last {
+  border-radius: 0 4px 4px 0;
+}
+.viz-seg-label {
+  font-size: 12px;
+  font-weight: 600;
+  /* Inside a fill: ink chosen for the fill's luminance, which clears contrast on all four slots. */
+  color: #0b0b0b;
+}
+.viz-unexplained {
+  background:
+    repeating-linear-gradient(45deg, var(--viz-hatch) 0 2px, transparent 2px 6px), var(--surface-2);
+}
+
+/* Tooltips: on hover and on keyboard focus; the value leads, the label follows. */
+.viz-tip {
+  display: none;
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 6px);
+  left: 0;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+  max-width: min(280px, 80vw);
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  pointer-events: none;
+}
+.viz-tip strong {
+  font-size: 14px;
+}
+.viz-tip span {
+  color: var(--text-dim);
+}
+.viz-seg .viz-tip {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.viz-seg.first .viz-tip {
+  left: 0;
+  transform: none;
+}
+.viz-seg.last .viz-tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.viz-bar-row:hover .viz-tip,
+.viz-bar-row:focus .viz-tip,
+.viz-seg:hover .viz-tip,
+.viz-seg:focus .viz-tip {
+  display: flex;
+}
+.viz-key {
+  display: inline-block;
+  width: 12px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: var(--c);
+}
+
+.viz-legend {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+}
+.viz-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: -1px;
+  background: var(--c);
+}
+.viz-swatch.viz-unexplained {
+  background:
+    repeating-linear-gradient(45deg, var(--viz-hatch) 0 2px, transparent 2px 4px), var(--surface-2);
+}
+.viz-table {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.viz-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.viz-table th,
+.viz-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.viz-table td:nth-child(n + 2) {
+  text-align: right;
+}
+.viz-notes {
+  font-size: 13px;
+  color: var(--text-dim);
+  padding-left: 18px;
+}
+
+@media (max-width: 480px) {
+  .viz-bar-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 2px;
+  }
+  .viz-bar-track {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}

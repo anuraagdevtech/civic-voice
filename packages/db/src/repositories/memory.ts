@@ -9,6 +9,7 @@ import { MemoryDocumentRepository, MemoryForumRepository } from './memory-forum.
 import type {
   AuthorityRow,
   BudgetLineRow,
+  FiscalLineRow,
   CatalogueRepository,
   CitizenRepository,
   CitizenRow,
@@ -238,6 +239,7 @@ export class MemoryCatalogueRepository implements CatalogueRepository {
   readonly topics = new Map<number, TopicRow>();
   readonly authorities = new Map<number, AuthorityRow>();
   readonly budget = new Map<string, BudgetLineRow[]>();
+  readonly fiscal = new Map<string, FiscalLineRow>();
   readonly quarantine = new Map<string, QuarantineRow & { detail?: string }>();
 
   async getRegion(regionId: number): Promise<RegionRow | null> {
@@ -338,6 +340,26 @@ export class MemoryCatalogueRepository implements CatalogueRepository {
         const byDepth = depthOf(b.region_id) - depthOf(a.region_id);
         return byDepth !== 0 ? byDepth : (b.allocated_be ?? -1) - (a.allocated_be ?? -1);
       });
+  }
+
+  async fiscalLines(regionId: number): Promise<FiscalLineRow[]> {
+    return [...this.fiscal.values()]
+      .filter((f) => f.region_id === regionId)
+      .map((f) => ({ ...f }))
+      .sort(
+        (a, b) =>
+          b.fy.localeCompare(a.fy) ||
+          a.stage.localeCompare(b.stage) ||
+          a.category.localeCompare(b.category),
+      );
+  }
+
+  async upsertFiscalLines(rows: readonly FiscalLineRow[]): Promise<void> {
+    for (const r of rows) {
+      if (!this.regions.has(r.region_id)) throw new Error(`no region ${r.region_id}`);
+      if (!(r.amount >= 0)) throw new RangeError(`negative amount for ${r.category}`);
+      this.fiscal.set(`${r.region_id}:${r.fy}:${r.stage}:${r.category}`, { ...r });
+    }
   }
 
   async quarantinedBuckets(

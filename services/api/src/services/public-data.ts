@@ -6,11 +6,13 @@ import {
   type CohortInsight,
   type DocumentKind,
   type DocumentView,
+  type FinanceResponse,
+  type FiscalStage,
   type Indicator,
   type JobsSummary,
   type Need,
 } from '@civic-voice/contracts';
-import { notFound } from '@civic-voice/core';
+import { availableYears, notFound, summariseFinance } from '@civic-voice/core';
 import type { AnalyticsStore, CohortFilter, CommentInsightResult } from '@civic-voice/analytics';
 import type { DocumentRow, Repositories } from '@civic-voice/db';
 import type { RegionCache } from './regions.ts';
@@ -135,6 +137,28 @@ export class PublicDataService {
         .sort((a, b) => b.vacancies - a.vacancies || b.notifications - a.notifications),
       items: await this.views(rows.slice(0, 50)),
       provenance: [...new Set(rows.map((r) => r.provenance))],
+    };
+  }
+
+  /**
+   * A government's public finances: taxes by category, spending by sector, and the gap. The region is
+   * the government — the country for the Union, a state for itself — and a year or stage it has no
+   * figures for is a null summary alongside what it does have, not an error.
+   */
+  async finance(regionId: number, fy?: string, stage?: FiscalStage): Promise<FinanceResponse> {
+    const region = await this.deps.regions.one(regionId);
+    if (!region) throw notFound(`no region ${regionId}`);
+    const figures = await this.deps.repos.catalogue.fiscalLines(regionId);
+    return {
+      region_id: region.id,
+      region_name: region.name,
+      population: region.population,
+      available: availableYears(figures),
+      summary: summariseFinance(figures, {
+        ...(fy ? { fy } : {}),
+        ...(stage ? { stage } : {}),
+        population: region.population,
+      }),
     };
   }
 

@@ -39,6 +39,7 @@ pnpm migrate && pnpm seed                  # schema + real Indian geography and 
 node packages/analytics/src/cli/migrate.ts # ClickHouse schema
 pnpm ingest:run --fixtures                 # sample GOs, projects and job notifications
 pnpm indicators:load --sample              # sample indicators, badged as such
+pnpm finance:load --sample                 # sample Union and Telangana budgets, badged as such
 pnpm dev:api & pnpm dev:worker & pnpm dev:web
 ```
 

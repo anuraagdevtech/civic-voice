@@ -3,6 +3,8 @@ import type {
   Demographics,
   Digest,
   DocumentKind,
+  FiscalCategory,
+  FiscalStage,
   Locale,
   Mood,
   Need,
@@ -204,6 +206,21 @@ export interface NewTopic {
   scheme_id?: number | null;
 }
 
+/**
+ * One published public-finance figure: a category of receipt or spending, for one government (the
+ * Union at the country region, a state at its region), financial year and stage, in ₹ crore.
+ */
+export interface FiscalLineRow {
+  region_id: number;
+  fy: string;
+  stage: FiscalStage;
+  category: FiscalCategory;
+  amount: number;
+  source_name: string;
+  source_url: string;
+  provenance: ProvenanceKind;
+}
+
 export interface CatalogueRepository {
   getRegion(regionId: number): Promise<RegionRow | null>;
   /** By stable key (`codes.key`), which data files and the geolocation resolver use. */
@@ -230,6 +247,10 @@ export interface CatalogueRepository {
    * against their exact region.
    */
   budgetLinesForPath(regionIds: readonly number[], fy: string): Promise<BudgetLineRow[]>;
+  /** Every published figure for one government, all years and stages: a few hundred rows at most. */
+  fiscalLines(regionId: number): Promise<FiscalLineRow[]>;
+  /** Insert or replace figures by (region, year, stage, category): a re-published figure replaces the old. */
+  upsertFiscalLines(rows: readonly FiscalLineRow[]): Promise<void>;
   quarantinedBuckets(topicId: number, regionId: number, dim: number): Promise<QuarantineRow[]>;
   addQuarantine(row: QuarantineRow & { detail?: string }): Promise<void>;
 }

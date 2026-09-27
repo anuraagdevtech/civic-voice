@@ -28,6 +28,7 @@
     "ingest:check": "node services/ingestor/src/cli/check.ts",
     "ingest:run": "node services/ingestor/src/cli/run.ts",
     "indicators:load": "node services/ingestor/src/cli/load-indicators.ts",
+    "finance:load": "node services/ingestor/src/cli/load-finance.ts",
     "dev:stack": "node infra/dev/memory-stack.ts",
     "dev:demo": "node infra/dev/memory-stack.ts --demo"
   },

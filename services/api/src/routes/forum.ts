@@ -6,6 +6,7 @@ import {
   COHORT_IDS,
   COMMENT_SORTS,
   DOCUMENT_KINDS,
+  FISCAL_STAGES,
   postCommentRequest,
   raiseIssueRequest,
   reportCommentRequest,
@@ -249,6 +250,21 @@ export function registerForumRoutes(app: App, ctx: ForumRouteContext): void {
     const { region_id } = regionQuery.parse(request.query);
     reply.header('cache-control', 'public, max-age=3600, stale-while-revalidate=86400');
     return { items: await publicData.indicators(region_id) };
+  });
+
+  app.get('/v1/finance', async (request, reply) => {
+    const { region_id, fy, stage } = regionQuery
+      .extend({
+        fy: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+        stage: z.enum(FISCAL_STAGES).optional(),
+      })
+      .parse(request.query);
+    // Budgets change twice a year; an hour at the edge costs nothing in freshness.
+    reply.header('cache-control', 'public, max-age=3600, stale-while-revalidate=86400');
+    return publicData.finance(region_id, fy, stage);
   });
 
   app.get('/v1/insights/cohort', async (request, reply) => {

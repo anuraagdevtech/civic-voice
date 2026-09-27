@@ -1,6 +1,7 @@
 export * from './anonymity.ts';
 export * from './capacity.ts';
 export * from './errors.ts';
+export * from './finance.ts';
 export * from './geo.ts';
 export * from './ids.ts';
 export * from './mood.ts';

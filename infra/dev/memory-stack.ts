@@ -4,7 +4,7 @@
  * pipelines, and the ingestor over the bundled fixtures. For building and demonstrating the UI with no
  * Postgres, Redis, Kafka or ClickHouse.
  *
- *   pnpm dev:stack          empty forum; documents and indicators are samples
+ *   pnpm dev:stack          empty forum; documents, indicators and budgets are samples
  *   pnpm dev:demo           the same, plus invented comments from simulated residents (demo-content.ts)
  *
  * Both run with CIVIC_DEMO=1, so the web app shows a banner saying the data is not real. Nothing
@@ -22,6 +22,7 @@ import { loadApiConfig } from '../../services/api/src/config.ts';
 import { Aggregator } from '../../services/worker/src/pipelines/aggregator.ts';
 import { CommentPipeline } from '../../services/worker/src/pipelines/comments.ts';
 import { Ingestor } from '../../services/ingestor/src/ingestor.ts';
+import { loadFinance, SAMPLE_FINANCE } from '../../services/ingestor/src/finance.ts';
 import { loadIndicators, SAMPLE_INDICATORS } from '../../services/ingestor/src/indicators.ts';
 import { DEMO_ISSUES, DEMO_RESIDENTS } from './demo-content.ts';
 
@@ -44,6 +45,7 @@ const ingestor = await Ingestor.create({ repos, logger, metrics, mode: 'fixtures
 for (const spec of SOURCES) await ingestor.runSource(spec);
 const topics = await ingestor.promote(500);
 await loadIndicators(repos, SAMPLE_INDICATORS);
+await loadFinance(repos, SAMPLE_FINANCE);
 
 const config = loadApiConfig({
   ...process.env,

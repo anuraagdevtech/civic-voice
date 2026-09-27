@@ -4,6 +4,7 @@ import {
   commentViewSchema,
   digestSchema,
   documentViewSchema,
+  financeResponseSchema,
   errorResponse,
   indicatorSchema,
   jobsSummarySchema,
@@ -11,6 +12,7 @@ import {
   resolveLocationResponse,
   trendingItemSchema,
   type CohortId,
+  type FiscalStage,
   type CommentSort,
   type DocumentKind,
   type RaiseIssueRequest,
@@ -453,6 +455,13 @@ export class CivicVoiceClient {
   async indicators(regionId: number) {
     return this.request('/v1/indicators', z.object({ items: z.array(indicatorSchema) }), {
       query: { region_id: regionId },
+    });
+  }
+
+  /** A government's taxes by category, spending by sector, and the gap. Region = government. */
+  async finance(regionId: number, opts: { fy?: string; stage?: FiscalStage } = {}) {
+    return this.request('/v1/finance', financeResponseSchema, {
+      query: { region_id: regionId, ...opts },
     });
   }
 
