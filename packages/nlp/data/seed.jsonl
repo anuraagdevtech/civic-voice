@@ -1,0 +1,241 @@
+{"t":"The roads in Khairatabad are full of potholes since the monsoon, nobody has fixed them","s":-1,"n":["roads_transport"],"g":0}
+{"t":"GHMC should repair the potholes on the Punjagutta road before someone dies","s":-1,"n":["roads_transport"],"g":1}
+{"t":"Metro extension to the airport is a great decision, it will save hours of travel","s":1,"n":["roads_transport"],"g":0}
+{"t":"When will the new flyover near Uppal be completed?","s":0,"n":["roads_transport"],"g":0}
+{"t":"Traffic at Mehdipatnam is terrible every evening, we need more buses","s":-1,"n":["roads_transport"],"g":1}
+{"t":"Thank you for the new RTC buses on our route, travel is much easier now","s":1,"n":["roads_transport"],"g":0}
+{"t":"No water supply in our colony for four days, we are buying tankers","s":-1,"n":["water"],"g":0}
+{"t":"Please ensure daily drinking water supply in Kukatpally, the pipeline is broken","s":-1,"n":["water"],"g":1}
+{"t":"Water supply has improved a lot in our area this summer, good work by the water board","s":1,"n":["water"],"g":0}
+{"t":"What is the schedule for water supply in Ward 91?","s":0,"n":["water"],"g":0}
+{"t":"Every time it rains our street floods because the drains are blocked with garbage","s":-1,"n":["sanitation"],"g":0}
+{"t":"The nala near our house must be desilted before the monsoon","s":-1,"n":["sanitation"],"g":1}
+{"t":"Garbage is not collected for a week, mosquitoes everywhere and children are falling sick","s":-1,"n":["sanitation","health"],"g":0}
+{"t":"Garbage collection has become regular after the new contractor, happy about it","s":1,"n":["sanitation"],"g":0}
+{"t":"Power cuts for three hours every night in summer, how can students study","s":-1,"n":["electricity","education"],"g":0}
+{"t":"Free electricity up to 200 units is a big relief for poor families","s":1,"n":["electricity","welfare"],"g":0}
+{"t":"The transformer in our lane burns every week, the department should replace it","s":-1,"n":["electricity"],"g":1}
+{"t":"Group 1 exam postponed again, lakhs of aspirants are losing years of their life","s":-1,"n":["employment","education"],"g":0}
+{"t":"Government should release job notifications on time and fill all vacancies","s":-1,"n":["employment"],"g":1}
+{"t":"Finally the notification for 11000 teacher posts is out, very happy for all aspirants","s":1,"n":["employment","education"],"g":0}
+{"t":"Unemployment among graduates is the biggest problem, nobody talks about it","s":-1,"n":["employment"],"g":0}
+{"t":"How many vacancies are there in the police recruitment this year?","s":0,"n":["employment","safety"],"g":0}
+{"t":"Question paper leak ruined the exam, the guilty must be punished and exam conducted again","s":-1,"n":["education","employment","corruption"],"g":1}
+{"t":"Private school fees have doubled in two years, middle class cannot afford","s":-1,"n":["education","prices"],"g":0}
+{"t":"Government schools need more teachers and proper toilets for girls","s":-1,"n":["education"],"g":1}
+{"t":"The new digital classrooms in government schools are a good step","s":1,"n":["education"],"g":0}
+{"t":"Scholarship amount is not credited for two years, poor students are dropping out","s":-1,"n":["education","welfare"],"g":0}
+{"t":"Fee reimbursement should be paid on time so colleges do not harass students","s":-1,"n":["education","welfare"],"g":1}
+{"t":"Government hospital has no medicines, patients are sent to private pharmacies","s":-1,"n":["health"],"g":0}
+{"t":"Aarogyasri helped my father get free heart surgery, thank you","s":1,"n":["health","welfare"],"g":0}
+{"t":"There should be a 24 hour primary health centre in every mandal","s":0,"n":["health"],"g":1}
+{"t":"Dengue cases are rising in our area, fogging is not being done","s":-1,"n":["health","sanitation"],"g":0}
+{"t":"Ambulance took one hour to reach, someone could have died","s":-1,"n":["health"],"g":0}
+{"t":"Farmers are not getting MSP for paddy, middlemen are looting them","s":-1,"n":["agriculture","corruption"],"g":0}
+{"t":"Government must procure all the paddy at MSP and pay within a week","s":-1,"n":["agriculture"],"g":1}
+{"t":"Rythu Bharosa money has been credited, it helps small farmers a lot","s":1,"n":["agriculture","welfare"],"g":0}
+{"t":"Urea shortage again during sowing season, farmers standing in queues for days","s":-1,"n":["agriculture"],"g":0}
+{"t":"Crop insurance claims are never paid, what is the use of paying premium","s":-1,"n":["agriculture"],"g":0}
+{"t":"Loan waiver should cover all farmers, not just a few","s":-1,"n":["agriculture","welfare"],"g":1}
+{"t":"Cotton prices crashed this year, farmers are in debt","s":-1,"n":["agriculture","prices"],"g":0}
+{"t":"Irrigation water from the project reached our village for the first time, very happy","s":1,"n":["agriculture","water"],"g":0}
+{"t":"When will the second instalment of PM-KISAN be released?","s":0,"n":["agriculture","welfare"],"g":0}
+{"t":"Petrol price is too high, daily commute has become unaffordable","s":-1,"n":["prices","roads_transport"],"g":0}
+{"t":"Gas cylinder at 500 rupees is a welcome relief for households","s":1,"n":["prices","welfare"],"g":0}
+{"t":"Vegetable prices are rising every week, the government should control inflation","s":-1,"n":["prices"],"g":1}
+{"t":"Old age pension has not come for three months, elders are suffering","s":-1,"n":["welfare"],"g":0}
+{"t":"Ration shop dealer gives less rice and asks for extra money","s":-1,"n":["welfare","corruption"],"g":0}
+{"t":"New ration cards should be issued, many families are waiting since years","s":-1,"n":["welfare"],"g":1}
+{"t":"The 2BHK houses were allotted fairly in our area, good transparency","s":1,"n":["housing"],"g":0}
+{"t":"2BHK houses built five years ago are still not handed over to beneficiaries","s":-1,"n":["housing"],"g":0}
+{"t":"Rents in Hyderabad have gone up a lot, affordable housing is needed for workers","s":-1,"n":["housing","prices"],"g":1}
+{"t":"I paid a bribe to get my building permission, corruption is everywhere","s":-1,"n":["corruption","housing"],"g":0}
+{"t":"The officials at the registration office demand money for everything","s":-1,"n":["corruption"],"g":0}
+{"t":"Online services have reduced corruption in certificates, good move","s":1,"n":["corruption"],"g":0}
+{"t":"Streetlights are not working, women feel unsafe walking at night","s":-1,"n":["safety"],"g":0}
+{"t":"Police patrolling should be increased near the bus stop, chain snatching happens daily","s":-1,"n":["safety"],"g":1}
+{"t":"She teams are doing good work, response was quick when I called","s":1,"n":["safety"],"g":0}
+{"t":"Musi river is full of sewage, the smell is unbearable","s":-1,"n":["environment","sanitation"],"g":0}
+{"t":"Lakes are being encroached by builders, authorities are silent","s":-1,"n":["environment","corruption"],"g":0}
+{"t":"Planting trees along the outer ring road is a nice initiative","s":1,"n":["environment"],"g":0}
+{"t":"Air pollution near the industrial area is causing breathing problems","s":-1,"n":["environment","health"],"g":0}
+{"t":"Stop cutting trees for road widening, find another way","s":-1,"n":["environment","roads_transport"],"g":1}
+{"t":"What is the total budget sanctioned for this project?","s":0,"n":[],"g":0}
+{"t":"Can someone share the link to the GO copy?","s":0,"n":[],"g":0}
+{"t":"I have not read the full order yet, will comment later","s":0,"n":[],"g":0}
+{"t":"This decision was announced last week","s":0,"n":[],"g":0}
+{"t":"Good decision by the government, fully support it","s":1,"n":[],"g":0}
+{"t":"This is a waste of public money","s":-1,"n":[],"g":0}
+{"t":"Nice to see some progress finally","s":1,"n":[],"g":0}
+{"t":"Totally useless announcement, nothing will change on the ground","s":-1,"n":[],"g":0}
+{"t":"The government should publish the list of beneficiaries online for transparency","s":0,"n":["welfare","corruption"],"g":1}
+{"t":"Youth need skill training centres and internships, not just degrees","s":-1,"n":["employment","education"],"g":1}
+{"t":"IT jobs are shrinking and layoffs are increasing, freshers have no opportunities","s":-1,"n":["employment"],"g":0}
+{"t":"Startup hub is creating good jobs for young people in the city","s":1,"n":["employment"],"g":0}
+{"t":"Age limit for government jobs should be increased since exams were delayed for years","s":-1,"n":["employment"],"g":1}
+{"t":"Coaching centres charge huge fees, government should provide free coaching for competitive exams","s":-1,"n":["education","employment","prices"],"g":1}
+{"t":"Hostel food for SC ST students is very poor quality","s":-1,"n":["education","welfare"],"g":0}
+{"t":"Metro fares are too high for daily wage workers","s":-1,"n":["roads_transport","prices"],"g":0}
+{"t":"Free bus travel for women has helped many working women","s":1,"n":["roads_transport","welfare"],"g":0}
+{"t":"Footpaths are occupied by shops, pedestrians walk on the road","s":-1,"n":["roads_transport","safety"],"g":0}
+{"t":"Borewells have dried up, we need a permanent drinking water solution","s":-1,"n":["water"],"g":1}
+{"t":"Mission Bhagiratha water is reaching our village regularly, thanks","s":1,"n":["water"],"g":0}
+{"t":"Sewage is mixing with drinking water pipes, people are falling sick","s":-1,"n":["water","sanitation","health"],"g":0}
+{"t":"paani nahi aa raha hai teen din se, koi sunne wala nahi","s":-1,"n":["water"],"g":0}
+{"t":"sarkar ko turant paani ki supply theek karni chahiye","s":-1,"n":["water"],"g":1}
+{"t":"sadak mein itne gaddhe hain ki roz accident hota hai","s":-1,"n":["roads_transport","safety"],"g":0}
+{"t":"metro ka kaam bahut accha hua hai, safar aasaan ho gaya","s":1,"n":["roads_transport"],"g":0}
+{"t":"naukri kab milegi, har saal sirf vaade hote hain","s":-1,"n":["employment"],"g":0}
+{"t":"berozgari bahut badh gayi hai, yuvaon ke liye naukriyan chahiye","s":-1,"n":["employment"],"g":1}
+{"t":"exam ka paper leak ho gaya, bacchon ki mehnat bekaar gayi","s":-1,"n":["education","employment","corruption"],"g":0}
+{"t":"school ki fees bahut zyada hai, garib log kaise padhayenge","s":-1,"n":["education","prices"],"g":0}
+{"t":"kisano ko MSP milna chahiye, mandi mein daam bahut kam hai","s":-1,"n":["agriculture","prices"],"g":1}
+{"t":"khad ki kami hai, kisan line mein khade hain","s":-1,"n":["agriculture"],"g":0}
+{"t":"PM kisan ka paisa aa gaya, kisano ko thodi rahat mili","s":1,"n":["agriculture","welfare"],"g":0}
+{"t":"mehangai ne kamar tod di hai, sabzi aur gas dono mehange","s":-1,"n":["prices"],"g":0}
+{"t":"gas cylinder sasta hua, accha kadam hai","s":1,"n":["prices","welfare"],"g":0}
+{"t":"aspatal mein dawai nahi hai, doctor bhi nahi milte","s":-1,"n":["health"],"g":0}
+{"t":"ayushman card se mera ilaaj muft mein hua, bahut accha scheme hai","s":1,"n":["health","welfare"],"g":0}
+{"t":"bijli ka bill bahut zyada aa raha hai","s":-1,"n":["electricity","prices"],"g":0}
+{"t":"raat ko bijli chali jaati hai, garmi mein bahut dikkat hai","s":-1,"n":["electricity"],"g":0}
+{"t":"har kaam ke liye rishwat deni padti hai office mein","s":-1,"n":["corruption"],"g":0}
+{"t":"pension teen mahine se nahi aayi, buzurg pareshan hain","s":-1,"n":["welfare"],"g":0}
+{"t":"ration mein chawal kam diya jaata hai","s":-1,"n":["welfare","corruption"],"g":0}
+{"t":"kachra roz uthaya jaana chahiye, gandagi bahut hai","s":-1,"n":["sanitation"],"g":1}
+{"t":"baarish mein poori colony mein paani bhar jaata hai, naali band hai","s":-1,"n":["sanitation"],"g":0}
+{"t":"police ko raat mein patrolling badhani chahiye","s":0,"n":["safety"],"g":1}
+{"t":"yeh faisla bahut accha hai, hum iska samarthan karte hain","s":1,"n":[],"g":0}
+{"t":"yeh sirf chunavi jumla hai, kuch nahi badlega","s":-1,"n":[],"g":0}
+{"t":"iska budget kitna hai, kisi ko pata hai?","s":0,"n":[],"g":0}
+{"t":"GO ki copy kahan milegi?","s":0,"n":[],"g":0}
+{"t":"ghar ka kiraya bahut badh gaya hai, sasta awas chahiye","s":-1,"n":["housing","prices"],"g":1}
+{"t":"talab par kabza ho raha hai, koi action nahi","s":-1,"n":["environment","corruption"],"g":0}
+{"t":"पानी की सप्लाई तीन दिन से बंद है, कोई सुनवाई नहीं","s":-1,"n":["water"],"g":0}
+{"t":"सरकार को हर घर तक पीने का पानी पहुंचाना चाहिए","s":0,"n":["water"],"g":1}
+{"t":"सड़कों पर गड्ढे ही गड्ढे हैं, रोज़ दुर्घटना होती है","s":-1,"n":["roads_transport","safety"],"g":0}
+{"t":"नई मेट्रो लाइन से सफर बहुत आसान हो गया है","s":1,"n":["roads_transport"],"g":0}
+{"t":"युवाओं को नौकरी चाहिए, सिर्फ वादे नहीं","s":-1,"n":["employment"],"g":1}
+{"t":"भर्ती परीक्षा बार बार रद्द हो रही है, छात्र परेशान हैं","s":-1,"n":["employment","education"],"g":0}
+{"t":"शिक्षकों की भर्ती का नोटिफिकेशन आया, बहुत खुशी की बात है","s":1,"n":["employment","education"],"g":0}
+{"t":"किसानों को फसल का सही दाम नहीं मिल रहा","s":-1,"n":["agriculture","prices"],"g":0}
+{"t":"किसानों का पूरा कर्ज माफ किया जाना चाहिए","s":-1,"n":["agriculture","welfare"],"g":1}
+{"t":"खाद की किल्लत से किसान बहुत परेशान हैं","s":-1,"n":["agriculture"],"g":0}
+{"t":"सिंचाई के लिए नहर का पानी गांव तक पहुंचा, किसान खुश हैं","s":1,"n":["agriculture","water"],"g":0}
+{"t":"सरकारी अस्पताल में दवाइयां नहीं मिलतीं","s":-1,"n":["health"],"g":0}
+{"t":"हर गांव में स्वास्थ्य केंद्र होना चाहिए","s":0,"n":["health"],"g":1}
+{"t":"महंगाई बहुत बढ़ गई है, घर चलाना मुश्किल है","s":-1,"n":["prices"],"g":0}
+{"t":"पेट्रोल और डीजल के दाम कम होने चाहिए","s":-1,"n":["prices"],"g":1}
+{"t":"बिजली कटौती से व्यापार ठप है","s":-1,"n":["electricity","employment"],"g":0}
+{"t":"बिना रिश्वत के कोई काम नहीं होता","s":-1,"n":["corruption"],"g":0}
+{"t":"बुजुर्गों की पेंशन समय पर मिलनी चाहिए","s":-1,"n":["welfare"],"g":1}
+{"t":"राशन कार्ड बनवाने में महीनों लग जाते हैं","s":-1,"n":["welfare"],"g":0}
+{"t":"कचरा उठाने की व्यवस्था बहुत अच्छी हो गई है","s":1,"n":["sanitation"],"g":0}
+{"t":"बारिश में नालियां जाम हो जाती हैं और पानी भर जाता है","s":-1,"n":["sanitation"],"g":0}
+{"t":"महिलाओं की सुरक्षा के लिए रात में पुलिस गश्त बढ़ाई जाए","s":-1,"n":["safety"],"g":1}
+{"t":"प्रदूषण से सांस लेना मुश्किल हो गया है","s":-1,"n":["environment","health"],"g":0}
+{"t":"यह सरकार का बहुत अच्छा फैसला है","s":1,"n":[],"g":0}
+{"t":"इस योजना का बजट कितना है?","s":0,"n":["welfare"],"g":0}
+{"t":"यह जनता के पैसे की बर्बादी है","s":-1,"n":[],"g":0}
+{"t":"स्कूल की फीस बहुत ज्यादा है, गरीब बच्चे कैसे पढ़ेंगे","s":-1,"n":["education","prices"],"g":0}
+{"t":"सरकारी स्कूलों में शिक्षकों की कमी है","s":-1,"n":["education","employment"],"g":0}
+{"t":"गरीबों के लिए सस्ते मकान बनाए जाने चाहिए","s":0,"n":["housing"],"g":1}
+{"t":"హైదరాబాద్ లో రోడ్లు చాలా దారుణంగా ఉన్నాయి, గుంతలు పూడ్చడం లేదు","s":-1,"n":["roads_transport"],"g":0}
+{"t":"వర్షాకాలానికి ముందే రోడ్లపై గుంతలు పూడ్చాలి","s":-1,"n":["roads_transport"],"g":1}
+{"t":"మెట్రో విస్తరణ చాలా మంచి నిర్ణయం, ప్రయాణం సులభం అవుతుంది","s":1,"n":["roads_transport"],"g":0}
+{"t":"ఫ్లైఓవర్ పనులు ఎప్పుడు పూర్తవుతాయి?","s":0,"n":["roads_transport"],"g":0}
+{"t":"మా కాలనీలో నాలుగు రోజులుగా నీళ్లు రావడం లేదు","s":-1,"n":["water"],"g":0}
+{"t":"ప్రతి ఇంటికి తాగునీరు అందించాలి","s":0,"n":["water"],"g":1}
+{"t":"మిషన్ భగీరథ నీళ్లు మా ఊరికి క్రమం తప్పకుండా వస్తున్నాయి, సంతోషం","s":1,"n":["water"],"g":0}
+{"t":"వర్షం పడితే మా వీధి మొత్తం వరద నీటితో నిండిపోతుంది, డ్రైనేజ్ పనిచేయడం లేదు","s":-1,"n":["sanitation"],"g":0}
+{"t":"చెత్త వారం రోజులుగా తీయడం లేదు, దోమలు పెరిగిపోయాయి","s":-1,"n":["sanitation","health"],"g":0}
+{"t":"నాలాల పూడిక వర్షాకాలానికి ముందే తీయాలి","s":-1,"n":["sanitation"],"g":1}
+{"t":"రాత్రి పూట కరెంటు కోతలు ఎక్కువయ్యాయి, పిల్లలు చదువుకోలేకపోతున్నారు","s":-1,"n":["electricity","education"],"g":0}
+{"t":"ఉచిత విద్యుత్ పేద కుటుంబాలకు పెద్ద ఊరట","s":1,"n":["electricity","welfare"],"g":0}
+{"t":"గ్రూప్ 1 పరీక్ష మళ్ళీ వాయిదా పడింది, నిరుద్యోగులు తీవ్ర నిరాశలో ఉన్నారు","s":-1,"n":["employment","education"],"g":0}
+{"t":"ప్రభుత్వం వెంటనే ఉద్యోగ నోటిఫికేషన్లు విడుదల చేయాలి","s":-1,"n":["employment"],"g":1}
+{"t":"టీచర్ పోస్టుల నోటిఫికేషన్ రావడం చాలా సంతోషం","s":1,"n":["employment","education"],"g":0}
+{"t":"నిరుద్యోగం యువతకు పెద్ద సమస్యగా మారింది","s":-1,"n":["employment"],"g":0}
+{"t":"పేపర్ లీక్ చేసిన వాళ్ళని కఠినంగా శిక్షించాలి","s":-1,"n":["education","employment","corruption"],"g":1}
+{"t":"ప్రైవేట్ స్కూల్ ఫీజులు విపరీతంగా పెరిగాయి","s":-1,"n":["education","prices"],"g":0}
+{"t":"ప్రభుత్వ పాఠశాలల్లో టీచర్ల కొరత ఉంది","s":-1,"n":["education","employment"],"g":0}
+{"t":"ఫీజు రీయింబర్స్‌మెంట్ బకాయిలు వెంటనే చెల్లించాలి","s":-1,"n":["education","welfare"],"g":1}
+{"t":"ప్రభుత్వ ఆసుపత్రిలో మందులు లేవు, డాక్టర్లు కూడా లేరు","s":-1,"n":["health"],"g":0}
+{"t":"ఆరోగ్యశ్రీ వల్ల మా అమ్మకి ఉచితంగా ఆపరేషన్ జరిగింది","s":1,"n":["health","welfare"],"g":0}
+{"t":"ప్రతి మండలంలో 24 గంటల ఆసుపత్రి ఉండాలి","s":0,"n":["health"],"g":1}
+{"t":"రైతులకు వడ్లకు మద్దతు ధర అందడం లేదు, దళారులు దోచుకుంటున్నారు","s":-1,"n":["agriculture","corruption"],"g":0}
+{"t":"ప్రభుత్వం మొత్తం వడ్లను మద్దతు ధరకు కొనుగోలు చేయాలి","s":-1,"n":["agriculture"],"g":1}
+{"t":"రైతు భరోసా డబ్బులు పడ్డాయి, చిన్న రైతులకు చాలా ఉపయోగం","s":1,"n":["agriculture","welfare"],"g":0}
+{"t":"విత్తనాలు, ఎరువుల కొరతతో రైతులు ఇబ్బంది పడుతున్నారు","s":-1,"n":["agriculture"],"g":0}
+{"t":"పంట బీమా డబ్బులు ఇప్పటి వరకు రాలేదు","s":-1,"n":["agriculture"],"g":0}
+{"t":"రుణమాఫీ అందరు రైతులకు వర్తింపజేయాలి","s":-1,"n":["agriculture","welfare"],"g":1}
+{"t":"పత్తి ధరలు పడిపోయాయి, రైతులు అప్పుల్లో ఉన్నారు","s":-1,"n":["agriculture","prices"],"g":0}
+{"t":"కాల్వ నీళ్లు మా పొలాలకు మొదటిసారి వచ్చాయి, రైతులు ఆనందంగా ఉన్నారు","s":1,"n":["agriculture","water"],"g":0}
+{"t":"పెట్రోల్ ధరలు భరించలేనంతగా పెరిగాయి","s":-1,"n":["prices"],"g":0}
+{"t":"గ్యాస్ సిలిండర్ 500 రూపాయలకే ఇవ్వడం మంచి నిర్ణయం","s":1,"n":["prices","welfare"],"g":0}
+{"t":"కూరగాయల ధరలు రోజురోజుకు పెరుగుతున్నాయి, ధరలు నియంత్రించాలి","s":-1,"n":["prices"],"g":1}
+{"t":"ఆసరా పింఛన్ మూడు నెలలుగా రావడం లేదు","s":-1,"n":["welfare"],"g":0}
+{"t":"రేషన్ డీలర్ బియ్యం తక్కువ ఇస్తున్నాడు","s":-1,"n":["welfare","corruption"],"g":0}
+{"t":"కొత్త రేషన్ కార్డులు వెంటనే మంజూరు చేయాలి","s":-1,"n":["welfare"],"g":1}
+{"t":"డబుల్ బెడ్ రూమ్ ఇళ్లు ఇంకా లబ్ధిదారులకు ఇవ్వలేదు","s":-1,"n":["housing"],"g":0}
+{"t":"ఇందిరమ్మ ఇళ్ల పథకం పేదలకు మంచి అవకాశం","s":1,"n":["housing","welfare"],"g":0}
+{"t":"ప్రతి పనికి లంచం అడుగుతున్నారు, అవినీతి పెరిగిపోయింది","s":-1,"n":["corruption"],"g":0}
+{"t":"వీధి దీపాలు పనిచేయడం లేదు, రాత్రి మహిళలకు భద్రత లేదు","s":-1,"n":["safety"],"g":0}
+{"t":"పోలీసు గస్తీ పెంచాలి, చైన్ స్నాచింగ్ ఎక్కువైంది","s":-1,"n":["safety"],"g":1}
+{"t":"మూసీ నది కాలుష్యంతో నిండిపోయింది","s":-1,"n":["environment","sanitation"],"g":0}
+{"t":"చెరువులను కబ్జా చేస్తున్నారు, అధికారులు పట్టించుకోవడం లేదు","s":-1,"n":["environment","corruption"],"g":0}
+{"t":"ఇది చాలా మంచి నిర్ణయం, పూర్తిగా మద్దతు ఇస్తున్నాం","s":1,"n":[],"g":0}
+{"t":"ఇది ప్రజాధనం వృధా","s":-1,"n":[],"g":0}
+{"t":"ఈ ప్రాజెక్టుకు ఎంత బడ్జెట్ కేటాయించారు?","s":0,"n":[],"g":0}
+{"t":"జీవో కాపీ ఎక్కడ దొరుకుతుంది?","s":0,"n":[],"g":0}
+{"t":"యువతకు నైపుణ్య శిక్షణ కేంద్రాలు కావాలి","s":0,"n":["employment","education"],"g":1}
+{"t":"maa colony lo neellu raavatledu chala rojulu nundi","s":-1,"n":["water"],"g":0}
+{"t":"prabhutvam ventane neellu supply cheyali","s":-1,"n":["water"],"g":1}
+{"t":"rodlu chala worst ga unnayi, gunthalu ekkuva","s":-1,"n":["roads_transport"],"g":0}
+{"t":"metro extension chala baaga undi, travel easy ayyindi","s":1,"n":["roads_transport"],"g":0}
+{"t":"udyogalu levu, notification eppudu vastundi","s":-1,"n":["employment"],"g":0}
+{"t":"group 1 exam malli postpone chesaru, nirudyogulu chala badha paduthunnaru","s":-1,"n":["employment","education"],"g":0}
+{"t":"prabhutvam anni khali posts fill cheyali","s":-1,"n":["employment"],"g":1}
+{"t":"rythulaki msp ivvali, mandi lo dharalu chala takkuva","s":-1,"n":["agriculture","prices"],"g":1}
+{"t":"rythu bharosa dabbulu padayi, chala help ayyindi","s":1,"n":["agriculture","welfare"],"g":0}
+{"t":"urea dorakatledu, raitulu queue lo nilabadutunnaru","s":-1,"n":["agriculture"],"g":0}
+{"t":"current cuts ekkuva ayyayi, rathri chala ibbandi","s":-1,"n":["electricity"],"g":0}
+{"t":"hospital lo mandulu levu, doctor kuda ledu","s":-1,"n":["health"],"g":0}
+{"t":"school fees chala ekkuva, middle class vallu kattalekapotunnaru","s":-1,"n":["education","prices"],"g":0}
+{"t":"chetta teeyatledu, domalu ekkuva ayyayi","s":-1,"n":["sanitation","health"],"g":0}
+{"t":"varsham padithe colony antha neellu, drainage pani cheyatledu","s":-1,"n":["sanitation"],"g":0}
+{"t":"pension moodu nelalu nundi raaledu","s":-1,"n":["welfare"],"g":0}
+{"t":"prathi pani ki lanchalu adugutunnaru","s":-1,"n":["corruption"],"g":0}
+{"t":"idi chala manchi nirnayam, full support","s":1,"n":[],"g":0}
+{"t":"ee project budget entha?","s":0,"n":[],"g":0}
+{"t":"dharalu chala perigayi, gas cylinder kuda costly","s":-1,"n":["prices"],"g":0}
+{"t":"streetlights levu, rathri safety ledu","s":-1,"n":["safety"],"g":0}
+{"t":"yuvatha ki skill training centres pettali","s":0,"n":["employment","education"],"g":1}
+{"t":"The ward office responded quickly to my complaint, appreciate it","s":1,"n":[],"g":0}
+{"t":"Complaints on the civic app are closed without any action","s":-1,"n":["corruption"],"g":0}
+{"t":"Please publish the tender details for this road project","s":0,"n":["roads_transport","corruption"],"g":1}
+{"t":"Farmers in our district need cold storage facilities so crops do not rot","s":-1,"n":["agriculture"],"g":1}
+{"t":"Drip irrigation subsidy has helped me save water and money","s":1,"n":["agriculture","water"],"g":0}
+{"t":"Tenant farmers are left out of every scheme, only landowners benefit","s":-1,"n":["agriculture","welfare"],"g":0}
+{"t":"Wild boars destroy our crops every season, forest department does nothing","s":-1,"n":["agriculture"],"g":0}
+{"t":"MSP for maize has been increased, good news for farmers","s":1,"n":["agriculture","prices"],"g":0}
+{"t":"Apprenticeship programmes with stipend would help fresh graduates","s":0,"n":["employment","education"],"g":1}
+{"t":"Government jobs are few, private sector must be encouraged to hire locals","s":-1,"n":["employment"],"g":1}
+{"t":"The job fair organised by the district was useful, I got an offer","s":1,"n":["employment"],"g":0}
+{"t":"Gig workers need social security and accident insurance","s":-1,"n":["employment","welfare"],"g":1}
+{"t":"Bus frequency to our village is once a day, students miss college","s":-1,"n":["roads_transport","education"],"g":0}
+{"t":"Mobile network and internet are poor in rural areas, online classes impossible","s":-1,"n":["education"],"g":0}
+{"t":"The new hospital building is ready but there is no staff","s":-1,"n":["health","employment"],"g":0}
+{"t":"Anganwadi centres are providing good nutrition to children","s":1,"n":["health","welfare"],"g":0}
+{"t":"Stray dogs are attacking children in our area","s":-1,"n":["safety","health"],"g":0}
+{"t":"CCTV cameras in the colony have reduced thefts","s":1,"n":["safety"],"g":0}
+{"t":"Cyber fraud cases are rising, police should run awareness camps","s":-1,"n":["safety"],"g":1}
+{"t":"Construction dust from the metro work is causing allergies","s":-1,"n":["environment","health","roads_transport"],"g":0}
+{"t":"Lake restoration in our area turned it into a beautiful park","s":1,"n":["environment"],"g":0}
+{"t":"yuvaon ko skill training aur internship chahiye","s":0,"n":["employment","education"],"g":1}
+{"t":"gig workers ko bhi insurance milna chahiye","s":-1,"n":["employment","welfare"],"g":1}
+{"t":"kisano ke liye cold storage banana chahiye","s":-1,"n":["agriculture"],"g":1}
+{"t":"बटाईदार किसानों को किसी योजना का लाभ नहीं मिलता","s":-1,"n":["agriculture","welfare"],"g":0}
+{"t":"कौशल प्रशिक्षण केंद्र हर जिले में खोले जाएं","s":0,"n":["employment","education"],"g":1}
+{"t":"కౌలు రైతులకు ఏ పథకమూ వర్తించడం లేదు","s":-1,"n":["agriculture","welfare"],"g":0}
+{"t":"అడవి పందులు పంటలను నాశనం చేస్తున్నాయి","s":-1,"n":["agriculture"],"g":0}
+{"t":"జాబ్ మేళా వల్ల నాకు ఉద్యోగం వచ్చింది","s":1,"n":["employment"],"g":0}

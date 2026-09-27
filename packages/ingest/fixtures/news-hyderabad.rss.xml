@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC FIXTURE: RSS 2.0, approximating a newspaper city feed. Headlines are invented. -->
+<rss version="2.0">
+  <channel>
+    <title>Hyderabad</title>
+    <item>
+      <title>Waterlogging in Khairatabad and Ameerpet after heavy rain; commuters stranded</title>
+      <link>https://news.example/hyderabad/waterlogging-khairatabad?utm_campaign=rss#comments</link>
+      <pubDate>Fri, 18 Sep 2026 21:10:00 +0530</pubDate>
+      <description>Several low-lying areas of Hyderabad were inundated on Friday night as nalas overflowed. Residents said the storm-water drains had not been desilted before the monsoon, and traffic on the flyover was halted for hours while the GHMC deployed emergency teams.</description>
+    </item>
+    <item>
+      <title>Hyderabad Metro phase-II extension to the airport: work to begin next month</title>
+      <link>https://news.example/hyderabad/metro-phase-2</link>
+      <pubDate>Thu, 17 Sep 2026 09:00:00 +0530</pubDate>
+      <description>The project, estimated at ₹6,250 crore, will add 31 km to the network.</description>
+    </item>
+  </channel>
+</rss>

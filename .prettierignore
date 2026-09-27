@@ -1,0 +1,9 @@
+node_modules
+dist
+pnpm-lock.yaml
+*.md
+# Data, kept byte-for-byte as generated or as the source served it: reformatting boundary data
+# multiplies its size, and a fixture must stay what the parser is being tested against.
+packages/geo/data/*.json
+packages/ingest/fixtures
+packages/nlp/data

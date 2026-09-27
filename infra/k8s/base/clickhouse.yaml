@@ -1,0 +1,72 @@
+# ClickHouse. A StatefulSet because replicas are not interchangeable — each owns its shard's data.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse
+spec:
+  serviceName: clickhouse
+  replicas: 3
+  selector:
+    matchLabels: { app: clickhouse }
+  template:
+    metadata:
+      labels: { app: clickhouse }
+    spec:
+      securityContext:
+        # ClickHouse wants a high file-descriptor limit; this is the setting the dev compose file
+        # deliberately omits, because setting rlimits needs privileges a laptop runtime may not have.
+        sysctls:
+          - { name: fs.file-max, value: '262144' }
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:24.8
+          ports:
+            - { containerPort: 8123, name: http }
+            - { containerPort: 9000, name: native }
+          resources:
+            requests: { cpu: '4', memory: 16Gi }
+            limits: { memory: 32Gi }
+          volumeMounts:
+            - { name: hot, mountPath: /var/lib/clickhouse/hot }
+            - { name: config, mountPath: /etc/clickhouse-server/config.d }
+          readinessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap: { name: clickhouse-storage }
+  volumeClaimTemplates:
+    - metadata: { name: hot }
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: fast-ssd
+        # 90 days of hot events at ~3 GB/day compressed, plus rollups and headroom
+        # (docs/SCALING.md §4). Cold partitions move to object storage by TTL.
+        resources: { requests: { storage: 500Gi } }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-storage
+data:
+  storage.xml: |
+    <clickhouse>
+      <storage_configuration>
+        <disks>
+          <hot><path>/var/lib/clickhouse/hot/</path></hot>
+          <cold>
+            <type>s3</type>
+            <endpoint>https://s3.ap-south-1.amazonaws.com/civic-voice-cold/clickhouse/</endpoint>
+            <use_environment_credentials>true</use_environment_credentials>
+          </cold>
+        </disks>
+        <policies>
+          <tiered>
+            <volumes>
+              <hot><disk>hot</disk></hot>
+              <cold><disk>cold</disk></cold>
+            </volumes>
+          </tiered>
+        </policies>
+      </storage_configuration>
+    </clickhouse>

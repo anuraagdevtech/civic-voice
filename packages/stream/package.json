@@ -1,0 +1,15 @@
+{
+  "name": "@civic-voice/stream",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@civic-voice/contracts": "workspace:*",
+    "@civic-voice/observability": "workspace:*",
+    "kafkajs": "^2.2.4",
+    "@civic-voice/core": "workspace:*"
+  }
+}
