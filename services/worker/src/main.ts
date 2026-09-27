@@ -28,7 +28,9 @@ import {
 } from '@civic-voice/stream';
 import { EVENT_TOPICS } from '@civic-voice/contracts';
 import { createLogger, createMetrics } from '@civic-voice/observability';
+import { ClaudeAnalyzer, claudeConfigured, trainSeedModel } from '@civic-voice/nlp';
 import { Aggregator } from './pipelines/aggregator.ts';
+import { CommentPipeline } from './pipelines/comments.ts';
 import { RtiSweeper } from './pipelines/rti-sweeper.ts';
 import { Reconciler } from './pipelines/reconciler.ts';
 import { Sentinel } from './pipelines/sentinel.ts';
@@ -38,6 +40,19 @@ const logger = createLogger('worker', { pretty: process.env['CIVIC_ENV'] !== 'pr
 const metrics = createMetrics();
 
 const sweepIntervalMs = Number(process.env['CIVIC_SWEEP_INTERVAL_MS'] ?? 60 * 60 * 1000);
+
+// Keys the analytics projection's hashes (ADR-0008). Like the pseudonym salt root, the development
+// default is refused in production: anyone who has read this repository could otherwise reproduce it.
+const INSECURE_DEFAULT = 'dev-only-insecure-secret-change-me';
+const analyticsKey = process.env['CIVIC_ANALYTICS_KEY'] ?? INSECURE_DEFAULT;
+if (
+  process.env['CIVIC_ENV'] === 'production' &&
+  (analyticsKey === INSECURE_DEFAULT || analyticsKey.length < 32)
+) {
+  throw new Error(
+    'CIVIC_ANALYTICS_KEY must be set to at least 32 characters when CIVIC_ENV=production',
+  );
+}
 const lagIntervalMs = Number(process.env['CIVIC_LAG_INTERVAL_MS'] ?? 15_000);
 
 let repos: Repositories;
@@ -71,6 +86,24 @@ if (useMemory) {
 }
 
 const aggregator = new Aggregator({ repos, cache, analytics, bus, metrics, logger });
+
+// The in-house comment model trains from the bundled dataset at startup: deterministic, a couple of
+// seconds, and no model artefact to ship or version separately (its version is a hash of its inputs).
+const commentModel = trainSeedModel();
+const claude = claudeConfigured(process.env) ? new ClaudeAnalyzer() : null;
+if (!claude) logger.info('no ANTHROPIC_API_KEY: comments are analysed by the in-house model only');
+const comments = new CommentPipeline({
+  repos,
+  cache,
+  analytics,
+  bus,
+  model: commentModel,
+  claude,
+  analyticsKey,
+  escalationsPerMinute: Number(process.env['CIVIC_ESCALATIONS_PER_MINUTE'] ?? 1200),
+  metrics,
+  logger,
+});
 const sweeper = router
   ? new RtiSweeper({
       router,
@@ -97,6 +130,7 @@ void reconciler;
 void sentinel;
 
 await aggregator.start();
+await comments.start();
 
 const timers: NodeJS.Timeout[] = [];
 
@@ -130,7 +164,10 @@ timers.push(
   }, lagIntervalMs),
 );
 
-logger.info({ topics: [EVENT_TOPICS.SENTIMENT] }, 'civic-voice worker running');
+logger.info(
+  { topics: [EVENT_TOPICS.SENTIMENT, EVENT_TOPICS.COMMENT], model: commentModel.version },
+  'civic-voice worker running',
+);
 
 let shuttingDown = false;
 const shutdown = async (signal: string) => {
@@ -141,6 +178,7 @@ const shutdown = async (signal: string) => {
   try {
     // Stop consuming first, so the in-flight batch finishes and commits before the stores close.
     await aggregator.stop();
+    await comments.stop();
     await Promise.all([repos.close(), cache.close(), analytics.close(), bus.close()]);
     process.exit(0);
   } catch (err) {

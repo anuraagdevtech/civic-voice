@@ -1,9 +1,18 @@
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
-import type { AnalyticsEvent, VerificationTier } from '@civic-voice/contracts';
+import {
+  NEEDS,
+  type AnalyticsEvent,
+  type CommentAnalyticsEvent,
+  type Need,
+  type VerificationTier,
+} from '@civic-voice/contracts';
 import { dayOf, fromHistogram, rollupAncestors, type RawBucket } from '@civic-voice/core';
+import { codec } from '@civic-voice/db';
 import { encodeDemographicsForAnalytics, encodeReasonCodeForAnalytics } from './encode.ts';
 import type {
   AnalyticsStore,
+  CommentInsightQuery,
+  CommentInsightResult,
   CrossSliceQuery,
   DailyRollupRow,
   RtiOutcomeRow,
@@ -55,12 +64,122 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
     });
   }
 
+  async insertCommentEvents(events: readonly CommentAnalyticsEvent[]): Promise<void> {
+    if (events.length === 0) return;
+    await this.client.insert({
+      table: 'comment_event',
+      format: 'JSONEachRow',
+      values: events.map((e) => {
+        const [country = 0, state = 0, district = 0, constituency = 0] = rollupAncestors(
+          e.region_path,
+        );
+        return {
+          dedupe_key: e.dedupe_key,
+          author_key: e.author_key,
+          hour: e.hour.slice(0, 19).replace('T', ' '),
+          topic_id: e.topic_id,
+          region_country: country,
+          region_state: state,
+          region_district: district,
+          region_constituency: constituency,
+          verification_tier: e.verification_tier,
+          ...encodeDemographicsForAnalytics(e.demographics),
+          sentiment: e.sentiment === 'negative' ? -1 : e.sentiment === 'positive' ? 1 : 0,
+          needs: e.needs,
+          suggestion: e.suggestion ? 1 : 0,
+          language: e.language,
+        };
+      }),
+    });
+  }
+
+  /**
+   * One scan of `comment_event` for the cohort. Rows are counted by `uniqExact(dedupe_key)` rather
+   * than `count()`, so a redelivered event that has not been merged away yet is still counted once.
+   */
+  async commentInsights(query: CommentInsightQuery): Promise<CommentInsightResult> {
+    const conditions = [
+      '(region_country = {regionId:UInt64} OR region_state = {regionId:UInt64} ' +
+        'OR region_district = {regionId:UInt64} OR region_constituency = {regionId:UInt64})',
+      'hour >= {since:DateTime}',
+    ];
+    const params: Record<string, unknown> = {
+      regionId: query.regionId,
+      since: query.since.slice(0, 19).replace('T', ' '),
+    };
+    for (const [dim, bands] of Object.entries(query.filter ?? {})) {
+      const column = DIMENSION_COLUMN[dim];
+      const codecFor = codec[dim as keyof typeof codec] as
+        { encode(v: string | undefined): number | null } | undefined;
+      // Column names come from the closed allow-list; band values are encoded to ordinals and bound.
+      if (column === undefined || !codecFor || !bands || bands.length === 0) continue;
+      conditions.push(`${column} IN ({bands_${column}:Array(UInt8)})`);
+      params[`bands_${column}`] = bands.map((b) => codecFor.encode(b)).filter((v) => v !== null);
+    }
+    const where = conditions.join(' AND ');
+    const needColumns = NEEDS.map(
+      (n, i) => `uniqExactIf(dedupe_key, has(needs, {need${i}:String})) AS n${i}`,
+    );
+    NEEDS.forEach((n, i) => (params[`need${i}`] = n));
+
+    const [summary, topics] = await Promise.all([
+      this.client
+        .query({
+          query: `
+            SELECT uniqExact(topic_id, author_key) AS voices,
+                   uniqExact(dedupe_key) AS comments,
+                   uniqExactIf(dedupe_key, sentiment = -1) AS negative,
+                   uniqExactIf(dedupe_key, sentiment = 0) AS neutral,
+                   uniqExactIf(dedupe_key, sentiment = 1) AS positive,
+                   uniqExactIf(dedupe_key, suggestion = 1) AS suggestions,
+                   ${needColumns.join(',\n                   ')}
+            FROM comment_event WHERE ${where}`,
+          query_params: params,
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json<Record<string, string | number>>()),
+      this.client
+        .query({
+          query: `
+            SELECT topic_id, uniqExact(dedupe_key) AS comments
+            FROM comment_event WHERE ${where}
+            GROUP BY topic_id ORDER BY comments DESC, topic_id ASC LIMIT {top:UInt32}`,
+          query_params: { ...params, top: query.topTopics ?? 5 },
+          format: 'JSONEachRow',
+        })
+        .then((r) => r.json<Record<string, string | number>>()),
+    ]);
+    const row = summary[0] ?? {};
+    const needs: Partial<Record<Need, number>> = {};
+    NEEDS.forEach((n, i) => {
+      const count = Number(row[`n${i}`] ?? 0);
+      if (count > 0) needs[n] = count;
+    });
+    return {
+      voices: Number(row['voices'] ?? 0),
+      comments: Number(row['comments'] ?? 0),
+      needs,
+      sentiment: {
+        negative: Number(row['negative'] ?? 0),
+        neutral: Number(row['neutral'] ?? 0),
+        positive: Number(row['positive'] ?? 0),
+      },
+      suggestions: Number(row['suggestions'] ?? 0),
+      topTopics: topics.map((t) => ({
+        topicId: Number(t['topic_id']),
+        comments: Number(t['comments']),
+      })),
+    };
+  }
+
   async insertEvents(events: readonly AnalyticsEvent[]): Promise<void> {
     if (events.length === 0) return;
     await this.client.insert({
       table: 'sentiment_event',
       format: 'JSONEachRow',
       values: events.map((e) => {
+        // The columns are levels, named for their usual kind: `region_district` holds a district or a
+        // city, `region_constituency` a constituency or a city ward (ADR-0010).
         const [country = 0, state = 0, district = 0, constituency = 0] = rollupAncestors(
           e.region_path,
         );

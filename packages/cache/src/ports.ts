@@ -1,4 +1,10 @@
-import type { Demographics, Mood, ReasonCode, VerificationTier } from '@civic-voice/contracts';
+import type {
+  Demographics,
+  Mood,
+  ReasonCode,
+  RegionBasis,
+  VerificationTier,
+} from '@civic-voice/contracts';
 import type { CounterIncrement, RawBucket } from '@civic-voice/core';
 
 /**
@@ -102,6 +108,8 @@ export interface CitizenProfile {
   region_path: number[];
   verification_tier: VerificationTier;
   demographics: Demographics;
+  /** Optional so profiles cached before it existed still parse; absent reads as `declared`. */
+  region_basis?: RegionBasis;
 }
 
 /**
@@ -132,8 +140,55 @@ export interface DedupeStore {
   close(): Promise<void>;
 }
 
+/**
+ * Per-citizen limits on forum actions, as fixed windows: comments per hour, issues per day, reports
+ * per hour. Deliberately separate from the sentiment token bucket — posting a comment must not spend
+ * the budget for recording an opinion.
+ */
+export type ForumAction = 'comment' | 'issue' | 'report' | 'vote';
+
+export interface ForumLimitStore {
+  consume(
+    citizenId: string,
+    action: ForumAction,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<QuotaDecision>;
+  close(): Promise<void>;
+}
+
+/**
+ * What is being talked about, per region. Each event adds weight to its topic in the current hour's
+ * bucket for every region on the topic's jurisdiction path; `top` sums the last 24 buckets with a
+ * six-hour half-life. Hourly buckets expire on their own, so nothing needs sweeping.
+ *
+ * Writers batch: the comment pipeline sums a batch's weight per topic before bumping, so a hot topic
+ * costs one command per batch rather than one per comment.
+ */
+export interface TrendingStore {
+  bump(
+    topicId: number,
+    regionIds: readonly number[],
+    weight: number,
+    comments: number,
+    at: Date,
+  ): Promise<void>;
+  top(
+    regionId: number,
+    limit: number,
+    now: Date,
+  ): Promise<Array<{ topicId: number; score: number }>>;
+  commentsLast24h(topicIds: readonly number[], now: Date): Promise<Map<number, number>>;
+  close(): Promise<void>;
+}
+
+export const TRENDING_HALF_LIFE_HOURS = 6;
+export const TRENDING_WINDOW_HOURS = 24;
+
 export interface CacheTier {
   counters: CounterStore;
+  forumLimits: ForumLimitStore;
+  trending: TrendingStore;
   /** Replaceable, so a service can supply a store built from its own configured quotas. */
   quotas: QuotaStore;
   idempotency: IdempotencyStore;

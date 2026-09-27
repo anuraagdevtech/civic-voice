@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC FIXTURE: RSS 2.0, approximating the PIB press-release feed. Content is invented. -->
+<rss version="2.0">
+  <channel>
+    <title>PIB - Press Releases</title>
+    <link>https://pib.gov.in</link>
+    <description>Press releases</description>
+    <item>
+      <title>Cabinet approves Rs. 12,000 crore for rural drinking water under Jal Jeevan Mission</title>
+      <link>https://pib.gov.in/PressReleasePage.aspx?PRID=900001&amp;utm_source=rss</link>
+      <pubDate>Thu, 17 Sep 2026 18:30:00 +0530</pubDate>
+      <description>&lt;p&gt;The Union Cabinet approved an outlay of Rs. 12,000 crore to extend functional household tap connections, with priority for Telangana, Andhra Pradesh and Maharashtra.&lt;/p&gt;</description>
+      <guid>900001</guid>
+    </item>
+    <item>
+      <title>MSP for Kharif crops increased; paddy MSP raised</title>
+      <link>https://pib.gov.in/PressReleasePage.aspx?PRID=900002</link>
+      <pubDate>Wed, 16 Sep 2026 12:00:00 +0530</pubDate>
+      <description>Minimum Support Prices for Kharif crops for the marketing season have been increased to ensure remunerative prices to farmers.</description>
+      <guid>900002</guid>
+    </item>
+    <item>
+      <title>Staff Selection Commission announces 8,500 vacancies in Multi Tasking Staff examination</title>
+      <link>https://pib.gov.in/PressReleasePage.aspx?PRID=900003</link>
+      <pubDate>Tue, 15 Sep 2026 10:00:00 +0530</pubDate>
+      <description>Online applications are invited. Last date: 15-10-2026.</description>
+      <guid>900003</guid>
+    </item>
+  </channel>
+</rss>

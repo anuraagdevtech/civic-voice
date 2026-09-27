@@ -10,6 +10,7 @@
   "dependencies": {
     "@civic-voice/contracts": "workspace:*",
     "@civic-voice/core": "workspace:*",
+    "@civic-voice/geo": "workspace:*",
     "@civic-voice/observability": "workspace:*",
     "pg": "^8.13.1"
   },

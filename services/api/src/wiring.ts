@@ -19,6 +19,11 @@ import {
   eventTopics,
   type EventBus,
 } from '@civic-voice/stream';
+import {
+  createClickHouseAnalyticsStore,
+  createMemoryAnalyticsStore,
+  type AnalyticsStore,
+} from '@civic-voice/analytics';
 import type { Logger } from '@civic-voice/observability';
 import type { ApiConfig } from './config.ts';
 
@@ -33,6 +38,8 @@ export interface Infrastructure {
   repos: Repositories;
   cache: CacheTier;
   bus: EventBus;
+  /** Read-only from the API: cohort insights. The worker is the only writer. */
+  analytics: AnalyticsStore;
   close(): Promise<void>;
 }
 
@@ -45,12 +52,14 @@ export async function createInfrastructure(
     const repos = createMemoryRepositories();
     const cache = createMemoryCacheTier();
     const bus = createMemoryEventBus();
+    const analytics = createMemoryAnalyticsStore();
     return {
       repos,
       cache,
       bus,
+      analytics,
       async close() {
-        await Promise.all([repos.close(), cache.close(), bus.close()]);
+        await Promise.all([repos.close(), cache.close(), bus.close(), analytics.close()]);
       },
     };
   }
@@ -70,9 +79,11 @@ export async function createInfrastructure(
     cooldownSeconds: config.quotas.topicCooldownSeconds,
   });
   const bus = createKafkaEventBus({ logger });
+  const analytics = createClickHouseAnalyticsStore();
 
   // Fail startup rather than accept traffic we cannot serve: the Redis client has its offline queue
-  // disabled, so a pod that has not connected would reject every write.
+  // disabled, so a pod that has not connected would reject every write. ClickHouse is not awaited:
+  // it serves only cohort insights, and an API that cannot answer those should still take opinions.
   await Promise.all([repos.ready(), cache.ready(), bus.producer.ready()]);
   await bus.ensureTopics(eventTopics());
 
@@ -80,8 +91,9 @@ export async function createInfrastructure(
     repos,
     cache,
     bus,
+    analytics,
     async close() {
-      await Promise.all([repos.close(), cache.close(), bus.close()]);
+      await Promise.all([repos.close(), cache.close(), bus.close(), analytics.close()]);
     },
   };
 }

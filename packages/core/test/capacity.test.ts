@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
   ASSUMPTIONS,
   computeCapacity,
+  computeForumCapacity,
   crossProductCardinality,
+  FORUM_ASSUMPTIONS,
   marginalSavingsFactor,
 } from '../src/capacity.ts';
 import { maxKeysPerEvent } from '../src/rollup.ts';
@@ -121,6 +123,43 @@ describe('capacity model responds to its assumptions', () => {
     assert.ok(
       doubled.spikeWritesPerSecond > 250_000,
       'at 2.8B the spike exceeds current headroom — re-provision before that point',
+    );
+  });
+});
+
+describe('capacity model — the forum (docs/SCALING.md §11)', () => {
+  const f = computeForumCapacity();
+
+  test('~6.3M comments/day: ~73/s on average, ~7.3k/s at a 100x spike', () => {
+    assert.equal(Math.round(f.commentsPerDay / 1e5) / 10, 6.3);
+    assert.equal(Math.round(f.avgCommentsPerSecond), 73);
+    assert.equal(Math.round(f.spikeCommentsPerSecond / 100) / 10, 7.3);
+  });
+
+  test('comment processing needs ~18 cores (5 worker pods) at spike', () => {
+    assert.equal(Math.round(f.workerCoresAtSpike), 18);
+    assert.equal(f.workerPodsAtSpike, 5);
+  });
+
+  test('without a budget, a spike would escalate ~2,250 comments/s to the large model', () => {
+    assert.equal(Math.round(f.unbudgetedEscalationsPerSecondAtSpike / 10) * 10, 2250);
+  });
+
+  test('the budget, not the traffic, bounds large-model spend: 5 requests/s at spike', () => {
+    assert.equal(f.budgetedEscalationsPerSecondAtSpike, 100);
+    assert.equal(f.largeModelRequestsPerSecondAtSpike, 5);
+    // And in steady state the budget covers nearly every uncertain comment.
+    const steady = FORUM_ASSUMPTIONS.escalationsPerMinutePerPod / 60;
+    assert.ok(steady >= f.avgCommentsPerSecond * FORUM_ASSUMPTIONS.escalationShare * 0.85);
+  });
+
+  test('comment storage is ~2.7 TB/year across all shards', () => {
+    assert.equal(Math.round(f.storageGBPerYear / 100) / 10, 2.7);
+  });
+
+  test('the hottest trending key stays under 2% of one Redis shard even unbatched', () => {
+    assert.ok(
+      f.trendingCommandsPerSecondOnHottestKeyAtSpike / ASSUMPTIONS.redisOpsPerSecondPerShard < 0.02,
     );
   });
 });

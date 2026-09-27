@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC FIXTURE: RSS 2.0, approximating the RBI press-release feed. Content is invented. -->
+<rss version="2.0">
+  <channel>
+    <title>RBI Press Releases</title>
+    <link>https://www.rbi.org.in</link>
+    <description>Press releases of the Reserve Bank of India</description>
+    <item>
+      <title>RBI releases the Handbook of Statistics on Indian States 2025-26</title>
+      <link>https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=990001</link>
+      <pubDate>Wed, 16 Sep 2026 17:00:00 +0530</pubDate>
+      <description>The Reserve Bank released the Handbook of Statistics on Indian States, with state-wise data on output, prices, fiscal indicators and outstanding liabilities.</description>
+    </item>
+    <item>
+      <title>Money Market Operations as on September 15, 2026</title>
+      <link>https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=990002</link>
+      <pubDate>Tue, 15 Sep 2026 19:00:00 +0530</pubDate>
+      <description>Daily money market operations.</description>
+    </item>
+    <item>
+      <title>Reserve Bank imposes monetary penalty on a co-operative bank in Telangana</title>
+      <link>https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=990003&amp;utm_medium=rss</link>
+      <pubDate>Mon, 14 Sep 2026 18:30:00 +0530</pubDate>
+      <description>A penalty of Rs. 2.5 lakh for non-compliance with directions on deposit accounts.</description>
+    </item>
+  </channel>
+</rss>

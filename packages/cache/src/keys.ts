@@ -25,6 +25,13 @@ export const keys = {
   pendingOpinion: (citizenId: string, topicId: number) => `po:${citizenId}:${topicId}`,
   profile: (citizenId: string) => `cp:${citizenId}`,
   dedupe: (eventId: string) => `dd:${eventId}`,
+
+  forumLimit: (citizenId: string, action: string, window: number) =>
+    `fl:${citizenId}:${action}:${window}`,
+  /** One slot per region, so the 24 hourly buckets can be summed with one ZUNION. */
+  trending: (regionId: number, hour: number) => `tr:{r${regionId}}:${hour}`,
+  /** One slot per topic, so a day's hourly comment counts are one MGET. */
+  topicComments: (topicId: number, hour: number) => `tc:{t${topicId}}:${hour}`,
 } as const;
 
 export const TTL = {
@@ -37,6 +44,8 @@ export const TTL = {
   dedupeSeconds: 60 * 60 * 24 * 3,
   /** Long enough to keep the write path off Postgres; short enough that a stale band self-heals. */
   profileSeconds: 60 * 60 * 6,
+  /** A bucket outlives the window it is summed over by an hour, so the oldest one is never half-gone. */
+  trendingBucketSeconds: 60 * 60 * 25,
 } as const;
 
 /** Hash field names inside a counter key. Six fields per bucket: histogram[5] + summed intensity. */

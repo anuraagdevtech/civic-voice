@@ -66,3 +66,17 @@ export function constantTimeEqualHex(a: string, b: string): boolean {
   if (ba.length !== a.length / 2 || bb.length !== b.length / 2) return false;
   return timingSafeEqual(ba, bb);
 }
+
+/**
+ * The name a comment is shown under: "Citizen 7F3A2C", from the per-topic pseudonym.
+ *
+ * So it inherits the pseudonym's properties — stable within a topic (a thread can tell who is
+ * replying to whom), unlinkable across topics. It is display only and not unique: at 16.7M values two
+ * authors in a very large thread can share one, which is cosmetic, since votes and reports are keyed
+ * by the full pseudonym.
+ */
+export function handleFor(pseudonym: string): string {
+  if (!/^[0-9a-f]{32}$/.test(pseudonym)) throw new RangeError('not a pseudonym');
+  // Taken from the end: the handle should not reveal a prefix of the stored key.
+  return `Citizen ${pseudonym.slice(-6).toUpperCase()}`;
+}

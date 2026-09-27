@@ -18,11 +18,11 @@ export interface RegionNode {
 
 /**
  * The region levels an event rolls up to: the first four of the citizen's own ancestor chain
- * (country → state → district → constituency).
+ * (country → state → district or city → constituency or city ward).
  *
  * Bounding the fan-out at 4 rather than "every region" is what makes the capacity model work
- * (docs/SCALING.md §5). Stopping before ward costs no publishable information, because a ward
- * holds ~1,000 people and any demographic slice of one is suppressed by the k-gate anyway.
+ * (docs/SCALING.md §5). Stopping at the fourth level costs no publishable information: below it sit
+ * only rural wards of ~1,000 people, whose demographic slices the k-gate would suppress anyway.
  */
 export function rollupAncestors(path: readonly number[]): number[] {
   return path.slice(0, ROLLUP_FANOUT);

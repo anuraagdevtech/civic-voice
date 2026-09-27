@@ -7,6 +7,7 @@ import {
 } from '../codec.ts';
 import { vshardFor } from '../shard.ts';
 import type { Queryable, ShardRouter } from '../router.ts';
+import { PgDocumentRepository, PgForumRepository } from './pg-forum.ts';
 import type {
   AuthorityRow,
   BudgetLineRow,
@@ -15,6 +16,7 @@ import type {
   CitizenRow,
   CreateCitizenInput,
   CurrentSentimentRow,
+  NewTopic,
   QuarantineRow,
   RegionRow,
   Repositories,
@@ -53,6 +55,7 @@ function toCitizen(row: Row): CitizenRow {
       education_band: asNumber(row['education_band']),
       occupation_band: asNumber(row['occupation_band']),
     }),
+    region_basis: Number(row['region_basis'] ?? 0) === 1 ? 'device' : 'declared',
     created_at: asTimestamp(row['created_at']),
     erased_at:
       row['erased_at'] === null || row['erased_at'] === undefined
@@ -62,7 +65,8 @@ function toCitizen(row: Row): CitizenRow {
 }
 
 const CITIZEN_COLUMNS = `id, region_id, region_path, verification_tier, locale,
-  age_band, gender, urbanity, income_band, education_band, occupation_band, created_at, erased_at`;
+  age_band, gender, urbanity, income_band, education_band, occupation_band, region_basis,
+  created_at, erased_at`;
 
 export class PgCitizenRepository implements CitizenRepository {
   private readonly router: ShardRouter;
@@ -77,8 +81,8 @@ export class PgCitizenRepository implements CitizenRepository {
       const { rows } = await db.query<Row>(
         `INSERT INTO civic_shard.citizen
            (id, vshard, region_id, region_path, verification_tier, locale,
-            age_band, gender, urbanity, income_band, education_band, occupation_band)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            age_band, gender, urbanity, income_band, education_band, occupation_band, region_basis)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING ${CITIZEN_COLUMNS}`,
         [
           input.id,
@@ -93,6 +97,7 @@ export class PgCitizenRepository implements CitizenRepository {
           d.income_band,
           d.education_band,
           d.occupation_band,
+          input.region_basis === 'device' ? 1 : 0,
         ],
       );
       return toCitizen(rows[0] as Row);
@@ -115,10 +120,19 @@ export class PgCitizenRepository implements CitizenRepository {
       demographics?: import('@civic-voice/contracts').Demographics;
       region_id?: number;
       region_path?: number[];
+      region_basis?: import('@civic-voice/contracts').RegionBasis;
       locale?: Locale;
     },
   ): Promise<CitizenRow | null> {
     const d = patch.demographics ? encodeDemographics(patch.demographics) : null;
+    // A new home region is `declared` unless this very patch says otherwise: a device confirmation of
+    // the old region says nothing about the new one.
+    const basis =
+      patch.region_id !== undefined || patch.region_basis !== undefined
+        ? patch.region_basis === 'device'
+          ? 1
+          : 0
+        : null;
     return this.router.withCitizenShard(citizenId, async (db) => {
       // COALESCE keeps this a single statement: a partial patch leaves untouched columns alone
       // without the handler having to assemble dynamic SQL.
@@ -133,6 +147,7 @@ export class PgCitizenRepository implements CitizenRepository {
            income_band     = CASE WHEN $5::boolean  THEN $9::smallint  ELSE income_band     END,
            education_band  = CASE WHEN $5::boolean  THEN $10::smallint ELSE education_band  END,
            occupation_band = CASE WHEN $5::boolean  THEN $11::smallint ELSE occupation_band END,
+           region_basis    = COALESCE($12::smallint, region_basis),
            updated_at      = now()
          WHERE id = $1 AND erased_at IS NULL
          RETURNING ${CITIZEN_COLUMNS}`,
@@ -148,6 +163,7 @@ export class PgCitizenRepository implements CitizenRepository {
           d?.income_band ?? null,
           d?.education_band ?? null,
           d?.occupation_band ?? null,
+          basis,
         ],
       );
       return rows[0] ? toCitizen(rows[0]) : null;
@@ -433,6 +449,7 @@ function toRegion(row: Row): RegionRow {
     kind: String(row['kind']),
     path: (row['path'] as (number | string)[]).map(Number),
     name: String(row['name']),
+    names: (row['names'] ?? {}) as Record<string, string>,
     population: asNumber(row['population']),
     codes: (row['codes'] ?? {}) as Record<string, string>,
   };
@@ -463,6 +480,7 @@ function toBudgetLine(row: Row): BudgetLineRow {
     region_id: Number(row['region_id']),
     region_name: row['region_name'] === undefined ? null : String(row['region_name']),
     level: String(row['level']) as BudgetLineRow['level'],
+    provenance: (row['provenance'] ?? 'official') as BudgetLineRow['provenance'],
     allocated_be: asNumber(row['allocated_be']),
     revised_re: asNumber(row['revised_re']),
     released: asNumber(row['released']),
@@ -483,6 +501,16 @@ export class PgCatalogueRepository implements CatalogueRepository {
       const { rows } = await db.query<Row>(`SELECT * FROM civic_catalogue.region WHERE id = $1`, [
         regionId,
       ]);
+      return rows[0] ? toRegion(rows[0]) : null;
+    });
+  }
+
+  async regionByKey(key: string): Promise<RegionRow | null> {
+    return this.router.catalogue(async (db) => {
+      const { rows } = await db.query<Row>(
+        `SELECT * FROM civic_catalogue.region WHERE codes ->> 'key' = $1 AND codes ? 'key'`,
+        [key],
+      );
       return rows[0] ? toRegion(rows[0]) : null;
     });
   }
@@ -542,6 +570,42 @@ export class PgCatalogueRepository implements CatalogueRepository {
         ],
       );
       return rows.map(toTopic);
+    });
+  }
+
+  async getTopics(topicIds: readonly number[]): Promise<TopicRow[]> {
+    if (topicIds.length === 0) return [];
+    return this.router.catalogue(async (db) => {
+      const { rows } = await db.query<Row>(
+        `SELECT * FROM civic_catalogue.topic WHERE id = ANY($1::bigint[])`,
+        [[...topicIds]],
+      );
+      const byId = new Map(rows.map((r) => [Number(r['id']), toTopic(r)]));
+      return topicIds.map((id) => byId.get(id)).filter((t): t is TopicRow => t !== undefined);
+    });
+  }
+
+  async createTopic(input: NewTopic): Promise<TopicRow> {
+    return this.router.catalogue(async (db) => {
+      const { rows } = await db.query<Row>(
+        `INSERT INTO civic_catalogue.topic
+           (kind, status, jurisdiction_region_id, authority_id, scheme_id, title, summary,
+            effective_from, source_refs)
+         VALUES ($1, $9, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [
+          input.kind,
+          input.jurisdiction_region_id,
+          input.authority_id ?? null,
+          input.scheme_id ?? null,
+          input.title,
+          input.summary,
+          input.effective_from,
+          JSON.stringify(input.source_refs),
+          input.status ?? 'active',
+        ],
+      );
+      return toTopic(rows[0] as Row);
     });
   }
 
@@ -637,6 +701,8 @@ export function createPgRepositories(router: ShardRouter): Repositories {
     sentiment: new PgSentimentRepository(router),
     rti: new PgRtiRepository(router),
     catalogue: new PgCatalogueRepository(router),
+    forum: new PgForumRepository(router),
+    documents: new PgDocumentRepository(router),
     ready: () => router.ping(),
     close: () => router.close(),
   };

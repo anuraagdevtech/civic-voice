@@ -35,6 +35,21 @@ const REDACTED_PATHS = [
   '*.dek_wrapped',
   'reason_text',
   '*.reason_text',
+  // Location: coordinates are used for one boundary lookup and never kept (ADR-0010).
+  'lat',
+  '*.lat',
+  'lng',
+  '*.lng',
+  'latitude',
+  '*.latitude',
+  'longitude',
+  '*.longitude',
+  'location_attestation',
+  '*.location_attestation',
+  // Comment text is public once published, but a log line is not where it belongs — and a refused
+  // comment was refused for what it contains.
+  'body',
+  '*.body',
 ];
 
 export type Logger = pino.Logger;

@@ -7,6 +7,7 @@ import { ShardRouter } from '../../src/router.ts';
 import { createPgRepositories } from '../../src/repositories/postgres.ts';
 import { forEachShardCluster, vshardBucket } from '../../src/maintenance.ts';
 import { runRepositoryContract } from '../repositories.contract.ts';
+import { runForumContract } from '../forum.contract.ts';
 
 /**
  * The Postgres half of the repository conformance suite, plus the behaviour that only exists against
@@ -46,6 +47,7 @@ if (!reachable) {
   });
 } else {
   runRepositoryContract('postgres', openRepositories);
+  runForumContract('postgres', openRepositories);
 
   describe('postgres-specific behaviour', () => {
     test('a citizen is stored on the vshard the router computes, not somewhere else', async () => {

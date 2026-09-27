@@ -1,0 +1,17 @@
+{
+  "name": "@civic-voice/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@civic-voice/contracts": "workspace:*",
+    "@civic-voice/core": "workspace:*",
+    "@civic-voice/observability": "workspace:*",
+    "fast-xml-parser": "^4.5.1",
+    "node-html-parser": "^6.1.13",
+    "unpdf": "^0.12.1"
+  }
+}

@@ -1,4 +1,9 @@
-import type { AnalyticsEvent, VerificationTier } from '@civic-voice/contracts';
+import type {
+  AnalyticsEvent,
+  CommentAnalyticsEvent,
+  Need,
+  VerificationTier,
+} from '@civic-voice/contracts';
 import {
   dayOf,
   emptyRawBucket,
@@ -8,6 +13,8 @@ import {
 } from '@civic-voice/core';
 import type {
   AnalyticsStore,
+  CommentInsightQuery,
+  CommentInsightResult,
   CrossSliceQuery,
   DailyRollupRow,
   RtiOutcomeRow,
@@ -27,6 +34,45 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
   readonly events: AnalyticsEvent[] = [];
   readonly rollups: DailyRollupRow[] = [];
   readonly rtiOutcomes: RtiOutcomeRow[] = [];
+  /** Keyed by `dedupe_key`: the ReplacingMergeTree's dedupe, done eagerly. */
+  readonly commentEvents = new Map<string, CommentAnalyticsEvent>();
+
+  async insertCommentEvents(events: readonly CommentAnalyticsEvent[]): Promise<void> {
+    for (const e of events) this.commentEvents.set(e.dedupe_key, structuredClone(e));
+  }
+
+  async commentInsights(query: CommentInsightQuery): Promise<CommentInsightResult> {
+    const since = Date.parse(query.since);
+    const rows = [...this.commentEvents.values()].filter((e) => {
+      if (Date.parse(e.hour) < since) return false;
+      // Only the four rollup levels are stored in the analytical row, as in ClickHouse.
+      if (!rollupAncestors(e.region_path).includes(query.regionId)) return false;
+      for (const [dim, bands] of Object.entries(query.filter ?? {})) {
+        const value = e.demographics[dim as keyof typeof e.demographics];
+        if (value === undefined || !(bands as readonly string[]).includes(value)) return false;
+      }
+      return true;
+    });
+    const needs: Partial<Record<Need, number>> = {};
+    const sentiment = { negative: 0, neutral: 0, positive: 0 };
+    const perTopic = new Map<number, number>();
+    for (const e of rows) {
+      for (const n of new Set(e.needs)) needs[n] = (needs[n] ?? 0) + 1;
+      sentiment[e.sentiment] += 1;
+      perTopic.set(e.topic_id, (perTopic.get(e.topic_id) ?? 0) + 1);
+    }
+    return {
+      voices: new Set(rows.map((e) => `${e.topic_id}:${e.author_key}`)).size,
+      comments: rows.length,
+      needs,
+      sentiment,
+      suggestions: rows.filter((e) => e.suggestion).length,
+      topTopics: [...perTopic]
+        .map(([topicId, comments]) => ({ topicId, comments }))
+        .sort((a, b) => b.comments - a.comments || a.topicId - b.topicId)
+        .slice(0, query.topTopics ?? 5),
+    };
+  }
 
   async insertEvents(events: readonly AnalyticsEvent[]): Promise<void> {
     this.events.push(...events);

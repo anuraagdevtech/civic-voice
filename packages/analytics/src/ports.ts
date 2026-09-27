@@ -1,4 +1,10 @@
-import type { AnalyticsEvent, VerificationTier } from '@civic-voice/contracts';
+import type {
+  AnalyticsEvent,
+  CommentAnalyticsEvent,
+  DemographicDimension,
+  Need,
+  VerificationTier,
+} from '@civic-voice/contracts';
 import type { RawBucket, RollupMutation } from '@civic-voice/core';
 
 /**
@@ -62,7 +68,34 @@ export interface ScorecardResult {
   appealOverturnRate: number | null;
 }
 
+/** A cohort as demographic bands: dimension → the bands that count. Null is everyone. */
+export type CohortFilter = Partial<Record<DemographicDimension, readonly string[]>>;
+
+export interface CommentInsightQuery {
+  /** Any level: a comment counts if the author's path passes through it. */
+  regionId: number;
+  filter: CohortFilter | null;
+  /** ISO timestamp; comments from this hour on. */
+  since: string;
+  topTopics?: number;
+}
+
+export interface CommentInsightResult {
+  /** Distinct (topic, author) voices — what the k-anonymity gate is applied to. */
+  voices: number;
+  comments: number;
+  /** Comments tagged with each need. */
+  needs: Partial<Record<Need, number>>;
+  sentiment: { negative: number; neutral: number; positive: number };
+  suggestions: number;
+  topTopics: Array<{ topicId: number; comments: number }>;
+}
+
 export interface AnalyticsStore {
+  /** Comment projections (no body, no id, no pseudonym). Idempotent on `dedupe_key`. */
+  insertCommentEvents(events: readonly CommentAnalyticsEvent[]): Promise<void>;
+  /** What a cohort in a region talks about. The caller applies the k-anonymity gate to `voices`. */
+  commentInsights(query: CommentInsightQuery): Promise<CommentInsightResult>;
   /** Append events. Batched: one insert per flush, never one per event. */
   insertEvents(events: readonly AnalyticsEvent[]): Promise<void>;
   /** Persist the daily marginals derived from a batch of mutations. */

@@ -485,5 +485,79 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         }
       });
     });
+
+    describe('trending', () => {
+      test('scores decay with age, so a burst an hour ago outranks a bigger one a day ago', async () => {
+        const tier = await makeTier();
+        try {
+          const region = T(51);
+          const now = new Date('2026-09-27T12:30:00Z');
+          const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000);
+          await tier.trending.bump(T(1), [region], 10, 3, hoursAgo(1));
+          await tier.trending.bump(T(2), [region], 30, 10, hoursAgo(20));
+          await tier.trending.bump(T(3), [region], 100, 30, hoursAgo(30)); // outside the window
+          const top = await tier.trending.top(region, 10, now);
+          assert.deepEqual(
+            top.map((t) => t.topicId),
+            [T(1), T(2)],
+          );
+          assert.ok(Math.abs((top[0]?.score ?? 0) - 10 * 0.5 ** (1 / 6)) < 1e-6);
+        } finally {
+          await tier.close();
+        }
+      });
+
+      test('one bump counts in every region on the path, and nowhere else', async () => {
+        const tier = await makeTier();
+        try {
+          const now = new Date('2026-09-27T12:30:00Z');
+          const [india, state, city, elsewhere] = [T(61), T(62), T(63), T(64)];
+          await tier.trending.bump(T(5), [india, state, city], 3, 1, now);
+          for (const r of [india, state, city])
+            assert.equal((await tier.trending.top(r, 5, now))[0]?.topicId, T(5));
+          assert.deepEqual(await tier.trending.top(elsewhere, 5, now), []);
+        } finally {
+          await tier.close();
+        }
+      });
+
+      test('comments in the last 24 hours', async () => {
+        const tier = await makeTier();
+        try {
+          const now = new Date('2026-09-27T12:30:00Z');
+          await tier.trending.bump(T(7), [T(71)], 3, 2, new Date(now.getTime() - 2 * 3_600_000));
+          await tier.trending.bump(T(7), [T(71)], 3, 1, now);
+          await tier.trending.bump(T(7), [T(71)], 3, 5, new Date(now.getTime() - 26 * 3_600_000));
+          const counts = await tier.trending.commentsLast24h([T(7), T(8)], now);
+          assert.equal(counts.get(T(7)), 3);
+          assert.equal(counts.get(T(8)), 0);
+        } finally {
+          await tier.close();
+        }
+      });
+    });
+
+    describe('forum limits', () => {
+      test('allows up to the limit in a window, then refuses with a retry-after', async () => {
+        const tier = await makeTier();
+        try {
+          const citizen = `c-${Math.random()}`;
+          for (let i = 0; i < 3; i++)
+            assert.equal(
+              (await tier.forumLimits.consume(citizen, 'comment', 3, 3600)).allowed,
+              true,
+            );
+          const refused = await tier.forumLimits.consume(citizen, 'comment', 3, 3600);
+          assert.equal(refused.allowed, false);
+          assert.ok(
+            (refused.retryAfterSeconds ?? 0) > 0 && (refused.retryAfterSeconds ?? 0) <= 3600,
+          );
+          // Actions are budgeted separately.
+          assert.equal((await tier.forumLimits.consume(citizen, 'report', 3, 3600)).allowed, true);
+        } finally {
+          await tier.close();
+        }
+      });
+    });
   });
 }

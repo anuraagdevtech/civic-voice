@@ -111,23 +111,37 @@ export type VerificationTier = (typeof VERIFICATION_TIERS)[keyof typeof VERIFICA
 export const DEFAULT_PUBLIC_TIER: VerificationTier = VERIFICATION_TIERS.IDENTITY;
 
 /**
- * India's administrative hierarchy. `rollupDepth` is the level's position in the ancestor chain
- * used for aggregation fan-out.
+ * India's administrative hierarchy: country → state → district *or city* → constituency *or ward*.
  *
- * Note that `ward` is stored (it is how a T3 citizen's home is attested) but is *not* a rollup
- * level: a ward holds ~1,000 people, so any demographic slice of one would be suppressed by the
- * k-anonymity gate anyway. Stopping at constituency costs no publishable information and keeps
- * the per-event fan-out at 4.
+ * A `city` is a municipal corporation (Greater Hyderabad) — not a district, since it can span several,
+ * and it is who answers for its wards' drains and roads. It sits at district depth, so the levels of
+ * the tree are positions rather than kinds (ADR-0010).
  */
-export const REGION_KINDS = ['country', 'state', 'district', 'constituency', 'ward'] as const;
+export const REGION_KINDS = [
+  'country',
+  'state',
+  'district',
+  'city',
+  'constituency',
+  'ward',
+] as const;
 export type RegionKind = (typeof REGION_KINDS)[number];
 
-export const ROLLUP_REGION_KINDS = ['country', 'state', 'district', 'constituency'] as const;
-export type RollupRegionKind = (typeof ROLLUP_REGION_KINDS)[number];
+/**
+ * Levels of a region's ancestor chain touched per event: the first four. Drives the capacity model in
+ * docs/SCALING.md, and fixed at 4 whatever the kinds at those levels are.
+ *
+ * Level 4 is a constituency, or a ward of a city. A city ward (~50,000 people in Greater Hyderabad) is
+ * large enough for demographic slices to clear the k-anonymity gate; a village ward below a
+ * constituency (~1,000 people) would not be, which is why rollups stop at the fourth level and a
+ * rural ward is stored (it attests where someone lives) but never aggregated on its own.
+ */
+export const ROLLUP_FANOUT = 4;
 
-/** Region levels touched per event. Drives the capacity model in docs/SCALING.md. */
-export const ROLLUP_FANOUT = ROLLUP_REGION_KINDS.length;
-
+/**
+ * `government_order` and `news` topics are created by the ingestor from discussable documents;
+ * `local_issue` topics are raised by residents, scoped to their own ward or city.
+ */
 export const TOPIC_KINDS = [
   'policy',
   'decision',
@@ -135,6 +149,9 @@ export const TOPIC_KINDS = [
   'law',
   'budget_line',
   'project',
+  'government_order',
+  'news',
+  'local_issue',
 ] as const;
 export type TopicKind = (typeof TOPIC_KINDS)[number];
 
@@ -242,3 +259,66 @@ export const LOCALES = [
   'sa',
 ] as const;
 export type Locale = (typeof LOCALES)[number];
+
+/**
+ * What an ingested public document is. The distinction matters for what happens next: a policy GO
+ * becomes a discussion topic, a routine transfer order does not; a job notification feeds the jobs
+ * board; news is linked and summarised, never republished.
+ */
+export const DOCUMENT_KINDS = [
+  'government_order',
+  'gazette_notification',
+  'press_release',
+  'project',
+  'scheme',
+  'tender',
+  'job_notification',
+  'news',
+] as const;
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+/**
+ * Where a figure or document came from. `sample` marks development seed data so it can never be
+ * mistaken for an official statistic — the UI badges it on every figure.
+ */
+export const PROVENANCE_KINDS = ['official', 'news', 'sample'] as const;
+export type ProvenanceKind = (typeof PROVENANCE_KINDS)[number];
+
+/**
+ * What people say they need, in a closed taxonomy so that "what do farmers need" is a count, not a
+ * reading of free text. Assigned to comments by the NLP model (packages/nlp), never by the author.
+ */
+export const NEEDS = [
+  'employment',
+  'education',
+  'health',
+  'agriculture',
+  'water',
+  'roads_transport',
+  'housing',
+  'electricity',
+  'sanitation',
+  'safety',
+  'corruption',
+  'prices',
+  'welfare',
+  'environment',
+] as const;
+export type Need = (typeof NEEDS)[number];
+
+export const NEED_LABELS: Record<Need, string> = {
+  employment: 'Jobs & employment',
+  education: 'Education & exams',
+  health: 'Health care',
+  agriculture: 'Farming & crop prices',
+  water: 'Drinking water',
+  roads_transport: 'Roads & transport',
+  housing: 'Housing',
+  electricity: 'Electricity',
+  sanitation: 'Drainage, garbage & flooding',
+  safety: 'Safety & policing',
+  corruption: 'Corruption',
+  prices: 'Prices & cost of living',
+  welfare: 'Pensions, ration & welfare',
+  environment: 'Environment & pollution',
+};

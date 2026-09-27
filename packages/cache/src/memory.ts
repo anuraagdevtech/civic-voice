@@ -6,20 +6,25 @@ import {
   type CounterIncrement,
   type RawBucket,
 } from '@civic-voice/core';
-import type {
-  CacheTier,
-  CitizenProfile,
-  CounterStore,
-  DedupeStore,
-  IdempotencyClaim,
-  IdempotencyStore,
-  PendingOpinion,
-  PendingOpinionStore,
-  ProfileStore,
-  QuotaDecision,
-  QuotaStore,
-  SliceQuery,
-  SliceResult,
+import {
+  TRENDING_HALF_LIFE_HOURS,
+  TRENDING_WINDOW_HOURS,
+  type CacheTier,
+  type CitizenProfile,
+  type CounterStore,
+  type DedupeStore,
+  type ForumAction,
+  type ForumLimitStore,
+  type TrendingStore,
+  type IdempotencyClaim,
+  type IdempotencyStore,
+  type PendingOpinion,
+  type PendingOpinionStore,
+  type ProfileStore,
+  type QuotaDecision,
+  type QuotaStore,
+  type SliceQuery,
+  type SliceResult,
 } from './ports.ts';
 import { TTL } from './keys.ts';
 
@@ -332,10 +337,109 @@ export class MemoryDedupeStore implements DedupeStore {
   async close(): Promise<void> {}
 }
 
+export class MemoryForumLimitStore implements ForumLimitStore {
+  private readonly windows: ExpiringMap<number>;
+  private readonly clock: Clock;
+
+  constructor(clock: Clock) {
+    this.clock = clock;
+    this.windows = new ExpiringMap<number>(clock);
+  }
+
+  async consume(
+    citizenId: string,
+    action: ForumAction,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<QuotaDecision> {
+    const now = this.clock.now();
+    const window = Math.floor(now / (windowSeconds * 1000));
+    const key = `${citizenId}:${action}:${window}`;
+    const used = this.windows.get(key) ?? 0;
+    if (used >= limit) {
+      const resetMs = (window + 1) * windowSeconds * 1000;
+      return {
+        allowed: false,
+        reason: 'rate_limited',
+        retryAfterSeconds: Math.max(1, Math.ceil((resetMs - now) / 1000)),
+      };
+    }
+    this.windows.set(key, used + 1, windowSeconds);
+    return { allowed: true };
+  }
+
+  async close(): Promise<void> {}
+}
+
+const hourOf = (at: Date) => Math.floor(at.getTime() / 3_600_000);
+const decay = (ageHours: number) => 0.5 ** (ageHours / TRENDING_HALF_LIFE_HOURS);
+
+export class MemoryTrendingStore implements TrendingStore {
+  /** `${regionId}:${hour}` → topic → weight */
+  private readonly buckets = new Map<string, Map<number, number>>();
+  /** `${topicId}:${hour}` → comments */
+  private readonly comments = new Map<string, number>();
+
+  async bump(
+    topicId: number,
+    regionIds: readonly number[],
+    weight: number,
+    comments: number,
+    at: Date,
+  ): Promise<void> {
+    const hour = hourOf(at);
+    for (const regionId of regionIds) {
+      const key = `${regionId}:${hour}`;
+      const bucket = this.buckets.get(key) ?? new Map<number, number>();
+      bucket.set(topicId, (bucket.get(topicId) ?? 0) + weight);
+      this.buckets.set(key, bucket);
+    }
+    if (comments > 0)
+      this.comments.set(
+        `${topicId}:${hour}`,
+        (this.comments.get(`${topicId}:${hour}`) ?? 0) + comments,
+      );
+  }
+
+  async top(
+    regionId: number,
+    limit: number,
+    now: Date,
+  ): Promise<Array<{ topicId: number; score: number }>> {
+    const current = hourOf(now);
+    const scores = new Map<number, number>();
+    for (let age = 0; age < TRENDING_WINDOW_HOURS; age++) {
+      for (const [topicId, weight] of this.buckets.get(`${regionId}:${current - age}`) ?? []) {
+        scores.set(topicId, (scores.get(topicId) ?? 0) + weight * decay(age));
+      }
+    }
+    return [...scores]
+      .map(([topicId, score]) => ({ topicId, score }))
+      .sort((a, b) => b.score - a.score || a.topicId - b.topicId)
+      .slice(0, limit);
+  }
+
+  async commentsLast24h(topicIds: readonly number[], now: Date): Promise<Map<number, number>> {
+    const current = hourOf(now);
+    const out = new Map<number, number>();
+    for (const topicId of topicIds) {
+      let n = 0;
+      for (let age = 0; age < TRENDING_WINDOW_HOURS; age++)
+        n += this.comments.get(`${topicId}:${current - age}`) ?? 0;
+      out.set(topicId, n);
+    }
+    return out;
+  }
+
+  async close(): Promise<void> {}
+}
+
 export function createMemoryCacheTier(): CacheTier {
   const clock = new Clock();
   const tier = {
     counters: new MemoryCounterStore(clock),
+    forumLimits: new MemoryForumLimitStore(clock),
+    trending: new MemoryTrendingStore(),
     quotas: new MemoryQuotaStore(clock),
     idempotency: new MemoryIdempotencyStore(clock),
     pending: new MemoryPendingOpinionStore(clock),
@@ -347,6 +451,8 @@ export function createMemoryCacheTier(): CacheTier {
     async close() {
       await Promise.all([
         tier.counters.close(),
+        tier.forumLimits.close(),
+        tier.trending.close(),
         tier.quotas.close(),
         tier.idempotency.close(),
         tier.pending.close(),

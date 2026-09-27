@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Seeds a development catalogue with a representative slice of real Indian administrative geography,
- * central schemes and public authorities.
+ * Seeds a development catalogue with a representative slice of real Indian administrative geography
+ * (the tree in @civic-voice/geo, including Greater Hyderabad's wards), central schemes and public
+ * authorities.
  *
  * Representative rather than complete: enough shape to exercise every code path (four rollup levels,
  * multiple jurisdictions, schemes with real budget structure) without shipping an 800k-row dataset.
@@ -10,157 +11,8 @@
  *   node packages/db/src/cli/seed.ts
  */
 import { Client } from 'pg';
+import { GEOGRAPHY, type SeedRegion } from '@civic-voice/geo';
 import { loadDbConfig } from '../config.ts';
-
-interface SeedRegion {
-  name: string;
-  kind: 'country' | 'state' | 'district' | 'constituency' | 'ward';
-  population: number;
-  codes: Record<string, string>;
-  children?: SeedRegion[];
-}
-
-/** Populations are 2011 Census / current projections, rounded. */
-const GEOGRAPHY: SeedRegion = {
-  name: 'India',
-  kind: 'country',
-  population: 1_428_600_000,
-  codes: { iso: 'IN' },
-  children: [
-    {
-      name: 'Uttar Pradesh',
-      kind: 'state',
-      population: 241_000_000,
-      codes: { lgd: '09' },
-      children: [
-        {
-          name: 'Lucknow',
-          kind: 'district',
-          population: 4_589_838,
-          codes: { lgd: '0161' },
-          children: [
-            {
-              name: 'Lucknow Cantt',
-              kind: 'constituency',
-              population: 420_000,
-              codes: { eci: 'AC-173' },
-            },
-            {
-              name: 'Sarojini Nagar',
-              kind: 'constituency',
-              population: 610_000,
-              codes: { eci: 'AC-175' },
-            },
-          ],
-        },
-        {
-          name: 'Varanasi',
-          kind: 'district',
-          population: 3_676_841,
-          codes: { lgd: '0167' },
-          children: [
-            {
-              name: 'Varanasi North',
-              kind: 'constituency',
-              population: 380_000,
-              codes: { eci: 'AC-388' },
-            },
-            {
-              name: 'Varanasi South',
-              kind: 'constituency',
-              population: 365_000,
-              codes: { eci: 'AC-389' },
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: 'Maharashtra',
-      kind: 'state',
-      population: 126_000_000,
-      codes: { lgd: '27' },
-      children: [
-        {
-          name: 'Pune',
-          kind: 'district',
-          population: 9_429_408,
-          codes: { lgd: '0521' },
-          children: [
-            {
-              name: 'Kothrud',
-              kind: 'constituency',
-              population: 470_000,
-              codes: { eci: 'AC-210' },
-            },
-            {
-              name: 'Hadapsar',
-              kind: 'constituency',
-              population: 640_000,
-              codes: { eci: 'AC-212' },
-            },
-          ],
-        },
-        {
-          name: 'Nagpur',
-          kind: 'district',
-          population: 4_653_570,
-          codes: { lgd: '0497' },
-          children: [
-            {
-              name: 'Nagpur South West',
-              kind: 'constituency',
-              population: 410_000,
-              codes: { eci: 'AC-052' },
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: 'Kerala',
-      kind: 'state',
-      population: 35_700_000,
-      codes: { lgd: '32' },
-      children: [
-        {
-          name: 'Ernakulam',
-          kind: 'district',
-          population: 3_282_388,
-          codes: { lgd: '0588' },
-          children: [
-            { name: 'Kochi', kind: 'constituency', population: 320_000, codes: { eci: 'AC-089' } },
-          ],
-        },
-      ],
-    },
-    {
-      // Deliberately included: the smallest UT, ~3,750x smaller than Uttar Pradesh. It is the reason
-      // the system shards by citizen rather than by region (ADR-0001), and it exercises the
-      // k-anonymity gate, since most demographic slices of it are below k.
-      name: 'Lakshadweep',
-      kind: 'state',
-      population: 64_473,
-      codes: { lgd: '31' },
-      children: [
-        {
-          name: 'Lakshadweep District',
-          kind: 'district',
-          population: 64_473,
-          codes: { lgd: '0587' },
-          children: [
-            {
-              name: 'Kavaratti',
-              kind: 'constituency',
-              population: 11_210,
-              codes: { eci: 'AC-001' },
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
 
 const SCHEMES = [
   {
@@ -241,19 +93,29 @@ async function insertRegions(
   node: SeedRegion,
   parentId: number | null,
   parentPath: number[],
+  idByKey: Map<string, number>,
 ) {
   const { rows } = await client.query<{ id: string }>(
-    `INSERT INTO civic_catalogue.region (parent_id, kind, path, name, population, codes)
-     VALUES ($1, $2, '{}'::bigint[], $3, $4, $5) RETURNING id`,
-    [parentId, node.kind, node.name, node.population, JSON.stringify(node.codes)],
+    `INSERT INTO civic_catalogue.region (parent_id, kind, path, name, names, population, codes)
+     VALUES ($1, $2, '{}'::bigint[], $3, $4, $5, $6) RETURNING id`,
+    [
+      parentId,
+      node.kind,
+      node.name,
+      JSON.stringify(node.names ?? {}),
+      node.population,
+      // The stable key goes in `codes`, beside LGD/ECI codes, so data files can find the row.
+      JSON.stringify({ ...node.codes, key: node.key }),
+    ],
   );
   const id = Number(rows[0]?.id);
   const path = [...parentPath, id];
   // The path includes the row's own id, so it can only be written after the id exists.
   await client.query(`UPDATE civic_catalogue.region SET path = $2 WHERE id = $1`, [id, path]);
+  idByKey.set(node.key, id);
 
   for (const child of node.children ?? []) {
-    await insertRegions(client, child, id, path);
+    await insertRegions(client, child, id, path, idByKey);
   }
   return id;
 }
@@ -273,13 +135,23 @@ async function main() {
     }
 
     await client.query('BEGIN');
-    await insertRegions(client, GEOGRAPHY, null, []);
+    const idByKey = new Map<string, number>();
+    await insertRegions(client, GEOGRAPHY, null, [], idByKey);
 
-    const regionIdByName = new Map<string, number>();
+    // The seed data below names regions in prose ("Pune"); a name shared by two regions (a ward and a
+    // district, say) is refused rather than resolved to whichever row came first.
+    const regionIdByName = new Map<string, number | 'ambiguous'>();
     const { rows: regions } = await client.query<{ id: string; name: string }>(
       'SELECT id, name FROM civic_catalogue.region',
     );
-    for (const r of regions) regionIdByName.set(r.name, Number(r.id));
+    for (const r of regions)
+      regionIdByName.set(r.name, regionIdByName.has(r.name) ? 'ambiguous' : Number(r.id));
+    const regionIdOf = (name: string, what: string): number => {
+      const id = regionIdByName.get(name);
+      if (id === undefined || id === 'ambiguous')
+        throw new Error(`${id ?? 'unknown'} region for ${what}: ${name}`);
+      return id;
+    };
 
     const schemeIdByName = new Map<string, number>();
     for (const scheme of SCHEMES) {
@@ -292,8 +164,7 @@ async function main() {
 
     const authorityIdByName = new Map<string, number>();
     for (const a of AUTHORITIES) {
-      const regionId = regionIdByName.get(a.region);
-      if (regionId === undefined) throw new Error(`unknown region for authority: ${a.region}`);
+      const regionId = regionIdOf(a.region, 'authority');
       const { rows } = await client.query<{ id: string }>(
         `INSERT INTO civic_catalogue.authority (kind, name, region_id, pio_contact, faa_contact)
          VALUES ($1, $2, $3, $4, $5) RETURNING id`,
@@ -369,8 +240,7 @@ async function main() {
     ];
 
     for (const [kind, title, region, authority, scheme, from, summary] of topics) {
-      const regionId = regionIdByName.get(region);
-      if (regionId === undefined) throw new Error(`unknown region for topic: ${region}`);
+      const regionId = regionIdOf(region, 'topic');
       await client.query(
         `INSERT INTO civic_catalogue.topic
            (kind, status, jurisdiction_region_id, authority_id, scheme_id, title, summary, effective_from, source_refs)
@@ -488,10 +358,8 @@ async function main() {
 
     for (const [scheme, region, level, be, re, released, utilised] of budget) {
       const schemeId = schemeIdByName.get(scheme);
-      const regionId = regionIdByName.get(region);
-      if (schemeId === undefined || regionId === undefined) {
-        throw new Error(`unknown scheme/region for budget line: ${scheme} / ${region}`);
-      }
+      const regionId = regionIdOf(region, 'budget line');
+      if (schemeId === undefined) throw new Error(`unknown scheme for budget line: ${scheme}`);
       const { rows } = await client.query<{ id: string }>(
         `INSERT INTO civic_catalogue.budget_line
            (fy, scheme_id, region_id, level, allocated_be, revised_re, released, utilised, source_refs)

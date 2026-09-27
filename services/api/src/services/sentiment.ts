@@ -80,6 +80,7 @@ export class SentimentService {
       region_path: citizen.region_path,
       verification_tier: citizen.verification_tier,
       demographics: citizen.demographics,
+      region_basis: citizen.region_basis,
     };
     await this.deps.cache.profiles.put(citizenId, profile);
     return profile;

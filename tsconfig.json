@@ -5,7 +5,8 @@
     "packages/*/test/**/*.ts",
     "services/*/src/**/*.ts",
     "services/*/test/**/*.ts",
-    "infra/loadtest/*.ts"
+    "infra/loadtest/*.ts",
+    "infra/dev/*.ts"
   ],
   "exclude": ["**/node_modules", "**/dist"]
 }

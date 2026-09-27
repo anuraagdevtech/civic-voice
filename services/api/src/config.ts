@@ -20,6 +20,11 @@ export interface ApiConfig {
   aggregateCacheSeconds: number;
   aggregateStaleWhileRevalidateSeconds: number;
   useMemoryAdapters: boolean;
+  /**
+   * The in-memory demo stack (infra/dev): every page carries a banner saying the comments are invented
+   * and the documents are samples. Refused in production.
+   */
+  demo: boolean;
   corsOrigins: string[];
   /**
    * Write quotas (docs/TRUST.md §3). Tunable without a code change, because the right cooldown is an
@@ -53,6 +58,10 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     }
   }
 
+  if (production && env['CIVIC_DEMO'] === '1') {
+    throw new Error('CIVIC_DEMO must not be set when CIVIC_ENV=production');
+  }
+
   const k = Number(env['CIVIC_K_ANONYMITY'] ?? DEFAULT_K);
   if (!Number.isInteger(k) || k < DEFAULT_K) {
     // The gate itself also refuses to go below the floor; this makes the misconfiguration loud.
@@ -73,6 +82,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     aggregateCacheSeconds: Number(env['CIVIC_AGGREGATE_CACHE_SECONDS'] ?? 30),
     aggregateStaleWhileRevalidateSeconds: Number(env['CIVIC_AGGREGATE_SWR_SECONDS'] ?? 120),
     useMemoryAdapters: env['CIVIC_MEMORY_ADAPTERS'] === '1',
+    demo: env['CIVIC_DEMO'] === '1',
     corsOrigins: (env['CIVIC_CORS_ORIGINS'] ?? '*').split(',').map((s) => s.trim()),
     quotas: {
       writesPerHour: Number(env['CIVIC_WRITES_PER_HOUR'] ?? QUOTAS.perCitizenPerHour),

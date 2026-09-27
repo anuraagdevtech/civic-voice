@@ -189,3 +189,96 @@ export function marginalSavingsFactor(): number {
   const marginal = Object.values(DIMENSION_SIZES).reduce((a, b) => a + b, 0) + 1;
   return crossProductCardinality() / marginal;
 }
+
+// ─────────────────────────────── The forum (ADR-0008) ───────────────────────────────
+
+/**
+ * The comment path, modelled the same way. Its shape is the opposite of the opinion path's: far
+ * fewer writes, each far more expensive (moderation, the in-house model, sometimes a large-model
+ * call), and reads that are per-thread rather than per-aggregate.
+ */
+export interface ForumAssumptions {
+  /** One session in twenty posts a comment. Forums typically see 1–10% of visitors write. */
+  commentsPerSession: number;
+  threadReadsPerSession: number;
+  /** Threads change as people post, so their edge TTL is 15 s rather than 30 s, and they hit less. */
+  threadEdgeHitRate: number;
+  /**
+   * Measured: `analyze()` — language, moderation, sentiment, 14 needs, suggestion — is 0.68 ms for
+   * the seed set's 54-character comments. Real comments run longer and the cost is linear in length,
+   * so this assumes 200 characters.
+   */
+  workerCpuMsPerComment: number;
+  /** Measured on held-out folds of the seed set: 31% of comments are flagged uncertain. */
+  escalationShare: number;
+  /** Per worker pod, per minute (CIVIC_ESCALATIONS_PER_MINUTE). What bounds large-model spend. */
+  escalationsPerMinutePerPod: number;
+  labelBatchSize: number;
+  bytesPerStoredComment: number;
+  /** Trending: ZINCRBY + EXPIRE per region on the topic's jurisdiction path, per topic per batch. */
+  trendingCommandsPerRegion: number;
+}
+
+export const FORUM_ASSUMPTIONS: ForumAssumptions = {
+  commentsPerSession: 0.05,
+  threadReadsPerSession: 3,
+  threadEdgeHitRate: 0.9,
+  workerCpuMsPerComment: 2.5,
+  escalationShare: 0.31,
+  escalationsPerMinutePerPod: 1200,
+  labelBatchSize: 20,
+  bytesPerStoredComment: 1_200,
+  trendingCommandsPerRegion: 2,
+};
+
+export interface ForumModel {
+  commentsPerDay: number;
+  avgCommentsPerSecond: number;
+  spikeCommentsPerSecond: number;
+  workerCoresAtSpike: number;
+  workerPodsAtSpike: number;
+  /** What escalation would cost with no budget — the reason there is one. */
+  unbudgetedEscalationsPerSecondAtSpike: number;
+  /** What the budget actually allows across the spike fleet. */
+  budgetedEscalationsPerSecondAtSpike: number;
+  largeModelRequestsPerSecondAtSpike: number;
+  storageGBPerYear: number;
+  spikeThreadReadsPerSecond: number;
+  originThreadReadsPerSecondAtSpike: number;
+  /**
+   * Worst case for the hottest trending key: every comment in the country bumping the national
+   * bucket, with no batching at all. Batching makes the real figure far lower.
+   */
+  trendingCommandsPerSecondOnHottestKeyAtSpike: number;
+}
+
+export function computeForumCapacity(
+  f: ForumAssumptions = FORUM_ASSUMPTIONS,
+  a: CapacityAssumptions = ASSUMPTIONS,
+): ForumModel {
+  const base = computeCapacity(a);
+  const commentsPerDay = base.sessionsPerDay * f.commentsPerSession;
+  const avgCommentsPerSecond = commentsPerDay / a.secondsPerDay;
+  const spikeCommentsPerSecond = avgCommentsPerSecond * a.eventSpikeMultiplier;
+  const workerCoresAtSpike = (spikeCommentsPerSecond * f.workerCpuMsPerComment) / 1000;
+  const workerPodsAtSpike = Math.ceil(workerCoresAtSpike / a.coresPerPod);
+  const unbudgeted = spikeCommentsPerSecond * f.escalationShare;
+  const budgeted = Math.min(unbudgeted, (workerPodsAtSpike * f.escalationsPerMinutePerPod) / 60);
+  const threadReadsPerDay = base.sessionsPerDay * f.threadReadsPerSession;
+  const spikeThreadReadsPerSecond = (threadReadsPerDay / a.secondsPerDay) * a.readSpikeMultiplier;
+  return {
+    commentsPerDay,
+    avgCommentsPerSecond,
+    spikeCommentsPerSecond,
+    workerCoresAtSpike,
+    workerPodsAtSpike,
+    unbudgetedEscalationsPerSecondAtSpike: unbudgeted,
+    budgetedEscalationsPerSecondAtSpike: budgeted,
+    largeModelRequestsPerSecondAtSpike: budgeted / f.labelBatchSize,
+    storageGBPerYear: (commentsPerDay * 365 * f.bytesPerStoredComment) / 1e9,
+    spikeThreadReadsPerSecond,
+    originThreadReadsPerSecondAtSpike: spikeThreadReadsPerSecond * (1 - f.threadEdgeHitRate),
+    trendingCommandsPerSecondOnHottestKeyAtSpike:
+      spikeCommentsPerSecond * f.trendingCommandsPerRegion,
+  };
+}

@@ -68,6 +68,8 @@ export type Demographics = z.infer<typeof demographicsSchema>;
 export const citizenSchema = z.object({
   id: uuid,
   region_id: regionId,
+  /** How the home region is known; see REGION_BASES in forum.ts. */
+  region_basis: z.enum(['declared', 'device']).optional(),
   verification_tier: verificationTierSchema,
   locale: z.enum(LOCALES),
   demographics: demographicsSchema,
@@ -81,6 +83,8 @@ export const registerCitizenRequest = z.object({
   demographics: demographicsSchema.default({}),
   /** Play Integrity / App Attest token, or a proof-of-work token on web. Establishes tier 0. */
   attestation: z.string().min(16).max(8192).optional(),
+  /** From POST /v1/geo/resolve: marks the home region as confirmed by device location. */
+  location_attestation: z.string().max(512).optional(),
 });
 export type RegisterCitizenRequest = z.infer<typeof registerCitizenRequest>;
 
@@ -94,6 +98,8 @@ export const updateDemographicsRequest = z.object({
   demographics: demographicsSchema,
   region_id: regionId.optional(),
   locale: z.enum(LOCALES).optional(),
+  /** From POST /v1/geo/resolve: marks the new home region as confirmed by device location. */
+  location_attestation: z.string().max(512).optional(),
 });
 
 // ─────────────────────────────── Regions & topics ───────────────────────────────
@@ -346,6 +352,10 @@ export const ERROR_CODES = [
   'k_anonymity_suppressed',
   'degraded',
   'internal',
+  /** A comment refused before it was accepted (personal information in it, say); `details` says why. */
+  'content_rejected',
+  /** A local question, and the caller does not live there. */
+  'not_local',
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -425,4 +435,5 @@ export const EVENT_TOPICS = {
   SENTIMENT: 'civic.sentiment.v1',
   RTI_TRANSITION: 'civic.rti.v1',
   MODERATION: 'civic.moderation.v1',
+  COMMENT: 'civic.comment.v1',
 } as const;

@@ -9,6 +9,13 @@ import {
   type RawBucket,
 } from './core-shim.ts';
 import { field, keys, parseField, TTL } from './keys.ts';
+import {
+  TRENDING_HALF_LIFE_HOURS,
+  TRENDING_WINDOW_HOURS,
+  type ForumAction,
+  type ForumLimitStore,
+  type TrendingStore,
+} from './ports.ts';
 import type {
   CacheTier,
   CitizenProfile,
@@ -459,11 +466,132 @@ async function closeQuietly(redis: RedisLike): Promise<void> {
   }
 }
 
+export class RedisForumLimitStore implements ForumLimitStore {
+  private readonly redis: RedisLike;
+
+  constructor(redis: RedisLike) {
+    this.redis = redis;
+  }
+
+  async consume(
+    citizenId: string,
+    action: ForumAction,
+    limit: number,
+    windowSeconds: number,
+  ): Promise<QuotaDecision> {
+    const now = Date.now();
+    const window = Math.floor(now / (windowSeconds * 1000));
+    const key = keys.forumLimit(citizenId, action, window);
+    // INCR then EXPIRE in one round trip; the count that comes back decides. A refused attempt still
+    // counts against the window, which is what a limit on hammering should do.
+    const result = await this.redis.multi().incr(key).expire(key, windowSeconds).exec();
+    const used = Number(result?.[0]?.[1] ?? 0);
+    if (used > limit) {
+      const resetMs = (window + 1) * windowSeconds * 1000;
+      return {
+        allowed: false,
+        reason: 'rate_limited',
+        retryAfterSeconds: Math.max(1, Math.ceil((resetMs - now) / 1000)),
+      };
+    }
+    return { allowed: true };
+  }
+
+  async close(): Promise<void> {}
+}
+
+export class RedisTrendingStore implements TrendingStore {
+  private readonly redis: RedisLike;
+
+  constructor(redis: RedisLike) {
+    this.redis = redis;
+  }
+
+  private hour(at: Date): number {
+    return Math.floor(at.getTime() / 3_600_000);
+  }
+
+  async bump(
+    topicId: number,
+    regionIds: readonly number[],
+    weight: number,
+    comments: number,
+    at: Date,
+  ): Promise<void> {
+    const hour = this.hour(at);
+    const pipe = this.redis.pipeline();
+    for (const regionId of regionIds) {
+      const key = keys.trending(regionId, hour);
+      pipe.zincrby(key, weight, String(topicId));
+      pipe.expire(key, TTL.trendingBucketSeconds);
+    }
+    if (comments > 0) {
+      const key = keys.topicComments(topicId, hour);
+      pipe.incrby(key, comments);
+      pipe.expire(key, TTL.trendingBucketSeconds);
+    }
+    await pipe.exec();
+  }
+
+  async top(
+    regionId: number,
+    limit: number,
+    now: Date,
+  ): Promise<Array<{ topicId: number; score: number }>> {
+    const current = this.hour(now);
+    const sources: string[] = [];
+    const weights: number[] = [];
+    for (let age = 0; age < TRENDING_WINDOW_HOURS; age++) {
+      sources.push(keys.trending(regionId, current - age));
+      weights.push(0.5 ** (age / TRENDING_HALF_LIFE_HOURS));
+    }
+    // ZUNION (Redis ≥ 6.2) sums the decayed buckets without writing a temporary key; the hash tag
+    // puts every bucket of one region in one slot, which a cluster requires.
+    const raw = (await this.redis.call(
+      'ZUNION',
+      String(sources.length),
+      ...sources,
+      'WEIGHTS',
+      ...weights.map(String),
+      'WITHSCORES',
+    )) as string[];
+    const scored: Array<{ topicId: number; score: number }> = [];
+    for (let i = 0; i + 1 < raw.length; i += 2)
+      scored.push({ topicId: Number(raw[i]), score: Number(raw[i + 1]) });
+    return scored.sort((a, b) => b.score - a.score || a.topicId - b.topicId).slice(0, limit);
+  }
+
+  async commentsLast24h(topicIds: readonly number[], now: Date): Promise<Map<number, number>> {
+    const current = this.hour(now);
+    const out = new Map<number, number>();
+    const pipe = this.redis.pipeline();
+    for (const topicId of topicIds) {
+      const hours = Array.from({ length: TRENDING_WINDOW_HOURS }, (_, age) =>
+        keys.topicComments(topicId, current - age),
+      );
+      pipe.mget(...hours);
+    }
+    const results = (await pipe.exec()) ?? [];
+    topicIds.forEach((topicId, i) => {
+      const values = (results[i]?.[1] ?? []) as Array<string | null>;
+      out.set(
+        topicId,
+        values.reduce((sum, v) => sum + Number(v ?? 0), 0),
+      );
+    });
+    return out;
+  }
+
+  async close(): Promise<void> {}
+}
+
 /** One connection serves every port: they share a hot path and separate pools would only add RTT. */
 export function createRedisCacheTier(opts: RedisCacheOptions = {}): CacheTier {
   const redis = createRedisClient(opts);
   return {
     counters: new RedisCounterStore(redis),
+    forumLimits: new RedisForumLimitStore(redis),
+    trending: new RedisTrendingStore(redis),
     quotas: new RedisQuotaStore(redis),
     idempotency: new RedisIdempotencyStore(redis),
     pending: new RedisPendingOpinionStore(redis),

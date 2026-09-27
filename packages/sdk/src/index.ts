@@ -1,6 +1,20 @@
 import {
   authoritySchema,
+  cohortInsightSchema,
+  commentViewSchema,
+  digestSchema,
+  documentViewSchema,
   errorResponse,
+  indicatorSchema,
+  jobsSummarySchema,
+  postCommentResponse,
+  resolveLocationResponse,
+  trendingItemSchema,
+  type CohortId,
+  type CommentSort,
+  type DocumentKind,
+  type RaiseIssueRequest,
+  type ReportReason,
   moodAggregateSchema,
   mySentimentSchema,
   paged,
@@ -74,7 +88,7 @@ export interface ClientOptions {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined>;
   /** Set on writes so a retry over a flaky connection cannot double-submit. */
@@ -167,6 +181,8 @@ export class CivicVoiceClient {
     locale?: Locale;
     demographics?: Demographics;
     attestation?: string;
+    /** From `resolveLocation`: marks the home region as confirmed by this device's location. */
+    location_attestation?: string;
   }) {
     const result = await this.request('/v1/citizens', registerCitizenResponse, {
       method: 'POST',
@@ -176,10 +192,54 @@ export class CivicVoiceClient {
     return result;
   }
 
-  async updateProfile(input: { demographics?: Demographics; region_id?: number; locale?: Locale }) {
+  async updateProfile(input: {
+    demographics?: Demographics;
+    region_id?: number;
+    locale?: Locale;
+    location_attestation?: string;
+  }) {
     return this.request('/v1/me', z.object({ ok: z.literal(true) }), {
       method: 'PATCH',
       body: input,
+    });
+  }
+
+  async meta() {
+    return this.request(
+      '/v1/meta',
+      z.object({
+        demo: z.boolean(),
+        k_anonymity: z.number().int(),
+        attribution: z.array(z.string()),
+      }),
+    );
+  }
+
+  async me() {
+    return this.request(
+      '/v1/me',
+      z.object({
+        id: z.string().uuid(),
+        region_id: z.number().int(),
+        region_path: z.array(z.number().int()),
+        region_basis: z.enum(['declared', 'device']),
+        verification_tier: z.number().int(),
+        locale: z.string(),
+        demographics: z.record(z.string()),
+        created_at: z.string(),
+      }),
+    );
+  }
+
+  /**
+   * Which region is this point in? The coordinate is coarsened to three decimals (~110 m) here,
+   * before it leaves the device, and sent in a request body so it lands in no URL or access log.
+   */
+  async resolveLocation(lat: number, lng: number) {
+    const coarse = (v: number) => Math.round(v * 1000) / 1000;
+    return this.request('/v1/geo/resolve', resolveLocationResponse, {
+      method: 'POST',
+      body: { lat: coarse(lat), lng: coarse(lng) },
     });
   }
 
@@ -263,6 +323,145 @@ export class CivicVoiceClient {
     });
   }
 
+  // ── Forum ──
+
+  async comments(
+    topicId: number,
+    query: { sort?: CommentSort; limit?: number; cursor?: string; parent_id?: string } = {},
+  ) {
+    return this.request(
+      `/v1/topics/${topicId}/comments`,
+      z.object({
+        items: z.array(commentViewSchema),
+        next_cursor: z.string().nullable(),
+        total: z.number().int(),
+      }),
+      { query },
+    );
+  }
+
+  async postComment(
+    topicId: number,
+    input: { body: string; parent_id?: string | null },
+    idempotencyKey: string,
+  ) {
+    return this.request(
+      `/v1/topics/${topicId}/comments`,
+      postCommentResponse.extend({ replayed: z.boolean() }),
+      {
+        method: 'POST',
+        body: { body: input.body, parent_id: input.parent_id ?? null },
+        idempotencyKey,
+      },
+    );
+  }
+
+  async myVotes(topicId: number, commentIds: readonly string[]) {
+    return this.request(
+      `/v1/topics/${topicId}/comments/mine/votes`,
+      z.object({ upvoted: z.array(z.string()) }),
+      {
+        query: { ids: commentIds.join(',') },
+      },
+    );
+  }
+
+  async vote(topicId: number, commentId: string, on: boolean) {
+    return this.request(
+      `/v1/topics/${topicId}/comments/${commentId}/vote`,
+      z.object({ upvotes: z.number().int(), upvoted: z.boolean() }),
+      { method: on ? 'PUT' : 'DELETE' },
+    );
+  }
+
+  async reportComment(topicId: number, commentId: string, reason: ReportReason) {
+    return this.request(
+      `/v1/topics/${topicId}/comments/${commentId}/reports`,
+      z.object({ received: z.literal(true) }),
+      {
+        method: 'POST',
+        body: { reason },
+      },
+    );
+  }
+
+  async deleteComment(topicId: number, commentId: string) {
+    return this.request(
+      `/v1/topics/${topicId}/comments/${commentId}`,
+      z.object({ deleted: z.literal(true) }),
+      {
+        method: 'DELETE',
+      },
+    );
+  }
+
+  async myComments(limit = 50) {
+    return this.request('/v1/me/comments', z.object({ items: z.array(commentViewSchema) }), {
+      query: { limit },
+    });
+  }
+
+  async digest(topicId: number) {
+    return this.request(
+      `/v1/topics/${topicId}/digest`,
+      z.object({
+        digest: digestSchema.nullable(),
+        comments: z.number().int(),
+        needed: z.number().int(),
+      }),
+    );
+  }
+
+  async trending(regionId: number, limit = 10) {
+    return this.request('/v1/trending', z.object({ items: z.array(trendingItemSchema) }), {
+      query: { region_id: regionId, limit },
+    });
+  }
+
+  async raiseIssue(input: RaiseIssueRequest, idempotencyKey: string) {
+    return this.request('/v1/issues', topicSchema, { method: 'POST', body: input, idempotencyKey });
+  }
+
+  // ── Documents, jobs, indicators, insights ──
+
+  async documents(query: {
+    region_id: number;
+    kind?: readonly DocumentKind[];
+    subject?: 'project' | 'scheme';
+    limit?: number;
+    cursor?: string;
+  }) {
+    return this.request(
+      '/v1/documents',
+      z.object({ items: z.array(documentViewSchema), next_cursor: z.string().nullable() }),
+      {
+        query: {
+          region_id: query.region_id,
+          kind: query.kind?.join(','),
+          subject: query.subject,
+          limit: query.limit,
+          cursor: query.cursor,
+        },
+      },
+    );
+  }
+
+  async jobs(regionId: number) {
+    return this.request('/v1/jobs', jobsSummarySchema, { query: { region_id: regionId } });
+  }
+
+  async indicators(regionId: number) {
+    return this.request('/v1/indicators', z.object({ items: z.array(indicatorSchema) }), {
+      query: { region_id: regionId },
+    });
+  }
+
+  async cohortInsight(cohort: CohortId, regionId: number, days = 30) {
+    return this.request('/v1/insights/cohort', cohortInsightSchema, {
+      query: { cohort, region_id: regionId, days },
+    });
+  }
+
   // ── Tax utilisation ──
 
   async taxUtilisation(regionId: number, fy: string) {
@@ -287,6 +486,11 @@ export function idempotencyKeyFor(
   attemptToken: string,
 ): string {
   return `${citizenId}:${topicId}:${attemptToken}`;
+}
+
+/** A fresh idempotency key for a one-off write (a comment, an issue); reuse it on retry. */
+export function newWriteKey(): string {
+  return globalThis.crypto.randomUUID();
 }
 
 export * from '@civic-voice/contracts';

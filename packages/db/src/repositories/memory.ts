@@ -1,4 +1,11 @@
-import type { Demographics, Locale, RtiState, VerificationTier } from '@civic-voice/contracts';
+import type {
+  Demographics,
+  Locale,
+  RegionBasis,
+  RtiState,
+  VerificationTier,
+} from '@civic-voice/contracts';
+import { MemoryDocumentRepository, MemoryForumRepository } from './memory-forum.ts';
 import type {
   AuthorityRow,
   BudgetLineRow,
@@ -7,6 +14,7 @@ import type {
   CitizenRow,
   CreateCitizenInput,
   CurrentSentimentRow,
+  NewTopic,
   QuarantineRow,
   RegionRow,
   Repositories,
@@ -54,6 +62,7 @@ export class MemoryCitizenRepository implements CitizenRepository {
       verification_tier: input.verification_tier ?? 0,
       locale: input.locale,
       demographics: { ...input.demographics },
+      region_basis: input.region_basis ?? 'declared',
       created_at: nowIso(),
       erased_at: null,
     };
@@ -72,6 +81,7 @@ export class MemoryCitizenRepository implements CitizenRepository {
       demographics?: Demographics;
       region_id?: number;
       region_path?: number[];
+      region_basis?: RegionBasis;
       locale?: Locale;
     },
   ): Promise<CitizenRow | null> {
@@ -82,6 +92,11 @@ export class MemoryCitizenRepository implements CitizenRepository {
     if (patch.demographics) row.demographics = { ...patch.demographics };
     if (patch.region_id !== undefined) row.region_id = patch.region_id;
     if (patch.region_path !== undefined) row.region_path = [...patch.region_path];
+    // A new home region is `declared` unless this very patch says otherwise: a device confirmation
+    // of the old region says nothing about the new one.
+    if (patch.region_id !== undefined || patch.region_basis !== undefined) {
+      row.region_basis = patch.region_basis ?? 'declared';
+    }
     if (patch.locale !== undefined) row.locale = patch.locale;
     return { ...row, demographics: { ...row.demographics } };
   }
@@ -230,6 +245,12 @@ export class MemoryCatalogueRepository implements CatalogueRepository {
     return r ? { ...r, path: [...r.path] } : null;
   }
 
+  async regionByKey(key: string): Promise<RegionRow | null> {
+    for (const r of this.regions.values())
+      if (r.codes['key'] === key) return { ...r, path: [...r.path] };
+    return null;
+  }
+
   async getRegions(regionIds: readonly number[]): Promise<RegionRow[]> {
     return regionIds
       .map((id) => this.regions.get(id))
@@ -270,6 +291,31 @@ export class MemoryCatalogueRepository implements CatalogueRepository {
       return byDate !== 0 ? byDate : b.id - a.id;
     });
     return topics.slice(0, Math.min(opts.limit ?? 50, 200)).map((t) => ({ ...t }));
+  }
+
+  async getTopics(topicIds: readonly number[]): Promise<TopicRow[]> {
+    return topicIds
+      .map((id) => this.topics.get(id))
+      .filter((t): t is TopicRow => t !== undefined)
+      .map((t) => ({ ...t }));
+  }
+
+  async createTopic(input: NewTopic): Promise<TopicRow> {
+    const id = Math.max(0, ...this.topics.keys()) + 1;
+    const row: TopicRow = {
+      id,
+      kind: input.kind,
+      status: input.status ?? 'active',
+      jurisdiction_region_id: input.jurisdiction_region_id,
+      authority_id: input.authority_id ?? null,
+      scheme_id: input.scheme_id ?? null,
+      title: input.title,
+      summary: input.summary,
+      effective_from: input.effective_from,
+      source_refs: [...input.source_refs],
+    };
+    this.topics.set(id, row);
+    return { ...row };
   }
 
   async getAuthority(authorityId: number): Promise<AuthorityRow | null> {
@@ -328,9 +374,13 @@ export interface MemoryRepositories extends Repositories {
   sentiment: MemorySentimentRepository;
   rti: MemoryRtiRepository;
   catalogue: MemoryCatalogueRepository;
+  forum: MemoryForumRepository;
+  documents: MemoryDocumentRepository;
 }
 
-export function createMemoryRepositories(): MemoryRepositories {
+export { MemoryDocumentRepository, MemoryForumRepository };
+
+export function createMemoryRepositories(opts: { now?: () => Date } = {}): MemoryRepositories {
   const sentiment = new MemorySentimentRepository();
   const follows = new Set<string>();
   return {
@@ -342,6 +392,8 @@ export function createMemoryRepositories(): MemoryRepositories {
     sentiment,
     rti: new MemoryRtiRepository(),
     catalogue: new MemoryCatalogueRepository(),
+    forum: new MemoryForumRepository(),
+    documents: new MemoryDocumentRepository(opts.now),
     async ready() {},
     async close() {},
   };

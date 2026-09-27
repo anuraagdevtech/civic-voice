@@ -17,6 +17,7 @@ import {
 } from '@civic-voice/contracts';
 import { badRequest, DomainError, notFound, unauthorized, uuidv7 } from '@civic-voice/core';
 import type { CacheTier } from '@civic-voice/cache';
+import type { AnalyticsStore } from '@civic-voice/analytics';
 import type { Repositories } from '@civic-voice/db';
 import type { EventBus } from '@civic-voice/stream';
 import { createLogger, createMetrics, type Logger, type Metrics } from '@civic-voice/observability';
@@ -26,12 +27,21 @@ import { DerivedTopicSaltProvider } from './services/salts.ts';
 import { SentimentService } from './services/sentiment.ts';
 import { RtiService } from './services/rti.ts';
 import { TaxService } from './services/tax.ts';
+import { ForumService } from './services/forum.ts';
+import { LocationService } from './services/location.ts';
+import { PublicDataService } from './services/public-data.ts';
+import { RegionCache } from './services/regions.ts';
+import { registerForumRoutes } from './routes/forum.ts';
 
 export interface AppDeps {
   config: ApiConfig;
   repos: Repositories;
   cache: CacheTier;
   bus: EventBus;
+  /** Cohort insights read it; without one they report themselves suppressed rather than failing. */
+  analytics?: AnalyticsStore;
+  /** Injected so "open" and "closing this week" can be tested at a fixed date. */
+  now?: () => Date;
   logger?: Logger;
   metrics?: Metrics;
 }
@@ -59,6 +69,24 @@ export async function buildApp(deps: AppDeps) {
   });
   const rti = new RtiService(repos);
   const tax = new TaxService(repos, cache);
+  const regions = new RegionCache(repos);
+  const location = new LocationService({ repos, regions, secret: config.tokenSecret });
+  const forum = new ForumService({
+    repos,
+    cache,
+    bus,
+    salts,
+    regions,
+    metrics,
+    profileFor: (citizenId) => sentiment.profileFor(citizenId),
+  });
+  const publicData = new PublicDataService({
+    repos,
+    regions,
+    analytics: deps.analytics ?? null,
+    kAnonymity: config.kAnonymity,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
 
   const app = Fastify({
     loggerInstance: logger,
@@ -240,6 +268,16 @@ export async function buildApp(deps: AppDeps) {
     }
   });
 
+  // What the client needs to know about this deployment before it renders anything.
+  app.get('/v1/meta', async (_request, reply) => {
+    reply.header('cache-control', 'public, max-age=300');
+    return {
+      demo: config.demo,
+      k_anonymity: config.kAnonymity,
+      attribution: ['Ward boundaries © OpenStreetMap contributors (ODbL)'],
+    };
+  });
+
   app.get('/metrics', async (_request, reply) => {
     reply.header('content-type', 'text/plain; version=0.0.4');
     return metrics.render();
@@ -262,6 +300,7 @@ export async function buildApp(deps: AppDeps) {
       locale: input.locale,
       demographics: input.demographics,
       verification_tier: 0,
+      region_basis: location.basisFor(region.id, input.location_attestation),
     });
 
     privateResponse(reply);
@@ -269,6 +308,7 @@ export async function buildApp(deps: AppDeps) {
       citizen: {
         id: citizen.id,
         region_id: citizen.region_id,
+        region_basis: citizen.region_basis,
         verification_tier: citizen.verification_tier,
         locale: citizen.locale,
         demographics: citizen.demographics,
@@ -292,6 +332,12 @@ export async function buildApp(deps: AppDeps) {
       if (!region) throw notFound(`no region ${input.region_id}`);
       patch.region_id = region.id;
       patch.region_path = region.path;
+      patch.region_basis = location.basisFor(region.id, input.location_attestation);
+    } else if (input.location_attestation !== undefined) {
+      // Confirming the region they already have, from their device.
+      const current = await repos.citizens.findById(principal.citizenId);
+      if (!current) throw notFound('citizen not found');
+      patch.region_basis = location.basisFor(current.region_id, input.location_attestation);
     }
 
     const updated = await repos.citizens.updateProfile(principal.citizenId, patch);
@@ -303,8 +349,28 @@ export async function buildApp(deps: AppDeps) {
     return { ok: true as const };
   });
 
+  app.get('/v1/me', async (request, reply) => {
+    const principal = await authenticate(request);
+    const citizen = await repos.citizens.findById(principal.citizenId);
+    if (!citizen || citizen.erased_at !== null) throw notFound('citizen not found');
+    privateResponse(reply);
+    return {
+      id: citizen.id,
+      region_id: citizen.region_id,
+      region_path: citizen.region_path,
+      region_basis: citizen.region_basis,
+      verification_tier: citizen.verification_tier,
+      locale: citizen.locale,
+      demographics: citizen.demographics,
+      created_at: citizen.created_at,
+    };
+  });
+
   app.delete('/v1/me', async (request, reply) => {
     const principal = await authenticate(request);
+    // Comments first: erasure walks the author's index, which the tombstone below does not touch, and
+    // a failure part-way leaves the index for the retried request to find (ADR-0008).
+    await repos.forum.eraseAuthor(principal.citizenId);
     const erased = await repos.citizens.erase(principal.citizenId);
     if (!erased) throw notFound('citizen not found or already erased');
     await cache.profiles.invalidate(principal.citizenId);
@@ -499,6 +565,18 @@ export async function buildApp(deps: AppDeps) {
     const input = rtiTransitionRequest.parse(request.body);
     privateResponse(reply);
     return rti.transition(principal.citizenId, id, input.to, input.on);
+  });
+
+  // ── Forum, geography, documents, insights ──
+
+  registerForumRoutes(app, {
+    authenticate,
+    privateResponse,
+    forum,
+    location,
+    publicData,
+    cache,
+    metrics,
   });
 
   // ── Tax utilisation ──

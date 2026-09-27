@@ -1,0 +1,7 @@
+{
+  "_comment": "SYNTHETIC FIXTURE: approximates a dataset-listing response. Content is invented.",
+  "records": [
+    { "title": "District-wise functional household tap connections, Telangana", "url": "https://data.gov.in/resource/example-1", "updated": "2026-09-10" },
+    { "title": "State-wise unemployment rate (PLFS), quarterly", "url": "https://data.gov.in/resource/example-2", "updated": "2026-09-01" }
+  ]
+}

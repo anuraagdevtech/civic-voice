@@ -1,6 +1,6 @@
 import { Pool, type PoolClient, type PoolConfig } from 'pg';
 import type { Logger } from '@civic-voice/observability';
-import { ShardMap, vshardFor, type ClusterConfig } from './shard.ts';
+import { ShardMap, vshardFor, vshardForTopic, type ClusterConfig } from './shard.ts';
 
 /**
  * The shard router (ADR-0007).
@@ -109,6 +109,34 @@ export class ShardRouter {
   ): Promise<T> {
     this.assertOpen();
     const pool = this.poolFor(this.shardMap.clusterFor(citizenId));
+    const client: PoolClient = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await fn(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        this.logger?.error({ err: rollbackErr }, 'rollback failed');
+      }
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /** Run a query against the one shard that owns this topic's discussion (ADR-0008). */
+  async withTopicShard<T>(topicId: number, fn: (db: Queryable) => Promise<T>): Promise<T> {
+    this.assertOpen();
+    return fn(this.poolFor(this.shardMap.clusterForVshard(vshardForTopic(topicId))));
+  }
+
+  /** A transaction on one topic's shard: a comment, its vote and its counter move together. */
+  async withTopicTransaction<T>(topicId: number, fn: (db: Queryable) => Promise<T>): Promise<T> {
+    this.assertOpen();
+    const pool = this.poolFor(this.shardMap.clusterForVshard(vshardForTopic(topicId)));
     const client: PoolClient = await pool.connect();
     try {
       await client.query('BEGIN');

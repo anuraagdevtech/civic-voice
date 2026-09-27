@@ -1,8 +1,15 @@
 import type {
+  CommentState,
   Demographics,
+  Digest,
+  DocumentKind,
   Locale,
   Mood,
+  Need,
+  ProvenanceKind,
   ReasonCode,
+  RegionBasis,
+  ReportReason,
   RtiState,
   RtiTrack,
   VerificationTier,
@@ -23,6 +30,7 @@ export interface CitizenRow {
   verification_tier: VerificationTier;
   locale: Locale;
   demographics: Demographics;
+  region_basis: RegionBasis;
   created_at: string;
   erased_at: string | null;
 }
@@ -34,6 +42,7 @@ export interface CreateCitizenInput {
   locale: Locale;
   demographics: Demographics;
   verification_tier?: VerificationTier;
+  region_basis?: RegionBasis;
 }
 
 export interface CitizenRepository {
@@ -45,6 +54,7 @@ export interface CitizenRepository {
       demographics?: Demographics;
       region_id?: number;
       region_path?: number[];
+      region_basis?: RegionBasis;
       locale?: Locale;
     },
   ): Promise<CitizenRow | null>;
@@ -126,6 +136,8 @@ export interface RegionRow {
   kind: string;
   path: number[];
   name: string;
+  /** Names in other scripts, by language code. */
+  names?: Record<string, string>;
   population: number | null;
   codes: Record<string, string>;
 }
@@ -162,6 +174,8 @@ export interface BudgetLineRow {
   region_name: string | null;
   /** Narrowed to the values the column's CHECK constraint permits, so callers need no cast. */
   level: 'union' | 'state' | 'district' | 'local';
+  /** `sample` for development seed figures, which the UI badges on every number. */
+  provenance: ProvenanceKind;
   allocated_be: number | null;
   revised_re: number | null;
   released: number | null;
@@ -177,8 +191,23 @@ export interface QuarantineRow {
   reason: string;
 }
 
+export interface NewTopic {
+  kind: string;
+  /** Defaults to `active`. `proposed` is listed nowhere until a moderator promotes it. */
+  status?: 'active' | 'proposed';
+  jurisdiction_region_id: number;
+  title: string;
+  summary: string | null;
+  effective_from: string | null;
+  source_refs: string[];
+  authority_id?: number | null;
+  scheme_id?: number | null;
+}
+
 export interface CatalogueRepository {
   getRegion(regionId: number): Promise<RegionRow | null>;
+  /** By stable key (`codes.key`), which data files and the geolocation resolver use. */
+  regionByKey(key: string): Promise<RegionRow | null>;
   getRegions(regionIds: readonly number[]): Promise<RegionRow[]>;
   childRegions(parentId: number): Promise<RegionRow[]>;
   getTopic(topicId: number): Promise<TopicRow | null>;
@@ -188,6 +217,8 @@ export interface CatalogueRepository {
     status?: string;
     limit?: number;
   }): Promise<TopicRow[]>;
+  getTopics(topicIds: readonly number[]): Promise<TopicRow[]>;
+  createTopic(input: NewTopic): Promise<TopicRow>;
   getAuthority(authorityId: number): Promise<AuthorityRow | null>;
   budgetLines(regionId: number, fy: string): Promise<BudgetLineRow[]>;
   /**
@@ -203,11 +234,186 @@ export interface CatalogueRepository {
   addQuarantine(row: QuarantineRow & { detail?: string }): Promise<void>;
 }
 
+// ─────────────────────────────── Forum (ADR-0008) ───────────────────────────────
+
+export interface CommentRow {
+  topic_id: number;
+  id: string;
+  parent_id: string | null;
+  pseudonym: string;
+  handle: string;
+  body: string;
+  language: string;
+  area: string | null;
+  located: boolean;
+  verification_tier: VerificationTier;
+  state: CommentState;
+  moderation_reasons: string[];
+  sentiment: -1 | 0 | 1 | null;
+  needs: Need[];
+  suggestion: boolean;
+  model: string | null;
+  upvotes: number;
+  reply_count: number;
+  report_count: number;
+  created_at: string;
+}
+
+export type NewComment = Omit<CommentRow, 'upvotes' | 'reply_count' | 'report_count'>;
+
+export interface CommentPage {
+  items: CommentRow[];
+  /** Opaque; pass back to continue. Null at the end. */
+  next_cursor: string | null;
+}
+
+/** Reports from this many distinct people hold a comment for review until a moderator looks. */
+export const REPORTS_TO_HOLD = 5;
+
+export interface ForumRepository {
+  /**
+   * Store a processed comment on its topic's shard and index it on its author's shard. Idempotent on
+   * the comment id: a redelivered event changes nothing and returns `inserted: false`. A published
+   * reply bumps its parent's reply count in the same transaction.
+   */
+  insertComment(citizenId: string, row: NewComment): Promise<{ inserted: boolean }>;
+  getComment(topicId: number, commentId: string): Promise<CommentRow | null>;
+  /** Published top-level comments (or the replies to `parentId`), in `sort` order. */
+  listComments(
+    topicId: number,
+    opts: { sort: 'top' | 'new'; limit: number; cursor?: string | null; parentId?: string | null },
+  ): Promise<CommentPage>;
+  /** Published comments, most upvoted first — the input to a digest. */
+  commentsForDigest(topicId: number, limit: number): Promise<CommentRow[]>;
+  countPublished(topicId: number): Promise<number>;
+  /** Idempotent: voting twice is one vote, un-voting what was never voted is a no-op. */
+  setVote(
+    topicId: number,
+    commentId: string,
+    pseudonym: string,
+    on: boolean,
+  ): Promise<{ upvotes: number; changed: boolean } | null>;
+  votedBy(topicId: number, commentIds: readonly string[], pseudonym: string): Promise<Set<string>>;
+  /** One report per pseudonym. Reaching REPORTS_TO_HOLD moves a published comment to `held`. */
+  report(
+    topicId: number,
+    commentId: string,
+    pseudonym: string,
+    reason: ReportReason,
+  ): Promise<{ counted: boolean; held: boolean } | null>;
+  setState(
+    topicId: number,
+    commentId: string,
+    state: CommentState,
+    reasons?: string[],
+  ): Promise<boolean>;
+  /** The author's own comments, newest first, in every state. */
+  myComments(citizenId: string, limit: number): Promise<CommentRow[]>;
+  /** Withdraw one's own comment: the body is blanked and it leaves every listing. */
+  deleteOwn(citizenId: string, topicId: number, commentId: string): Promise<boolean>;
+  /** Erasure: blank every comment the citizen wrote, then drop their index. Safe to re-run. */
+  eraseAuthor(citizenId: string): Promise<number>;
+  getDigest(topicId: number): Promise<Digest | null>;
+  putDigest(digest: Digest): Promise<void>;
+}
+
+// ─────────────────────────────── Documents, jobs, indicators ───────────────────────────────
+
+export interface DocumentRow {
+  id: number;
+  content_hash: string;
+  source_id: string;
+  source_name: string;
+  kind: DocumentKind;
+  subject: 'project' | 'scheme' | null;
+  title: string;
+  url: string;
+  published_on: string | null;
+  snippet: string | null;
+  go_number: string | null;
+  go_type: 'Ms' | 'Rt' | 'P' | null;
+  gazette_number: string | null;
+  department: string | null;
+  amount_rupees: number | null;
+  vacancies: number | null;
+  closing_on: string | null;
+  jurisdiction_region_id: number;
+  primary_region_id: number | null;
+  primary_region_path: number[];
+  geo_confidence: number;
+  geo_region_ids: number[];
+  discussable: boolean;
+  provenance: ProvenanceKind;
+  needs_ocr: boolean;
+  topic_id: number | null;
+  first_seen_at: string;
+}
+
+export type NewDocument = Omit<DocumentRow, 'id' | 'topic_id' | 'first_seen_at'>;
+
+export interface IndicatorRow {
+  code: string;
+  name: string;
+  category: 'public_finance' | 'economy' | 'jobs' | 'agriculture';
+  unit: string;
+  source_name: string;
+  source_url: string;
+  note: string | null;
+  region_id: number;
+  period: string;
+  period_start: string;
+  value: number;
+  provenance: ProvenanceKind;
+}
+
+export interface SourceHealthRow {
+  source_id: string;
+  fetched_at: string;
+  outcome: string;
+  items: number;
+  suspected_layout_change: boolean;
+  message: string | null;
+}
+
+export interface DocumentRepository {
+  /** Insert new documents and refresh known ones (by content hash). Returns ids by content hash. */
+  upsertDocuments(
+    docs: readonly NewDocument[],
+  ): Promise<{ inserted: number; updated: number; ids: Map<string, number> }>;
+  getDocument(id: number): Promise<DocumentRow | null>;
+  /**
+   * Documents that concern someone at `regionPath`: those scoped to any region on the path (a
+   * national scheme, a state GO, a city project, their ward's drain), plus any that name their own
+   * region. Newest first.
+   */
+  listForRegion(
+    regionPath: readonly number[],
+    opts: {
+      kinds?: readonly DocumentKind[];
+      subject?: 'project' | 'scheme';
+      limit: number;
+      before?: { published_on: string | null; id: number } | null;
+    },
+  ): Promise<DocumentRow[]>;
+  /** Job notifications still open on `today` (closing on or after it, or undated and under 60 days old). */
+  openJobs(regionPath: readonly number[], today: string): Promise<DocumentRow[]>;
+  linkTopic(documentId: number, topicId: number): Promise<void>;
+  /** Discussable documents not yet put up as topics. */
+  undiscussed(limit: number): Promise<DocumentRow[]>;
+  putSourceHealth(row: SourceHealthRow): Promise<void>;
+  sourceHealth(): Promise<SourceHealthRow[]>;
+  upsertIndicators(rows: readonly IndicatorRow[]): Promise<void>;
+  /** The latest two observations of each indicator for each region on the path. */
+  indicators(regionPath: readonly number[]): Promise<IndicatorRow[]>;
+}
+
 export interface Repositories {
   citizens: CitizenRepository;
   sentiment: SentimentRepository;
   rti: RtiRepository;
   catalogue: CatalogueRepository;
+  forum: ForumRepository;
+  documents: DocumentRepository;
   ready(): Promise<void>;
   close(): Promise<void>;
 }

@@ -81,6 +81,10 @@ export const PRODUCTION_PARTITIONS = {
   sentiment: 256,
   rti: 16,
   moderation: 16,
+  // Comments are keyed by topic like sentiment, but arrive at a small fraction of its rate and cost
+  // far more per event to process (moderation, the model, sometimes a large-model call), so the
+  // ceiling that matters is consumer parallelism, not bytes per partition.
+  comment: 64,
 } as const;
 
 export function eventTopics(env: NodeJS.ProcessEnv = process.env): TopicSpec[] {
@@ -105,6 +109,10 @@ export function eventTopics(env: NodeJS.ProcessEnv = process.env): TopicSpec[] {
     {
       topic: EVENT_TOPICS.MODERATION,
       partitions: count('CIVIC_MODERATION_PARTITIONS', PRODUCTION_PARTITIONS.moderation),
+    },
+    {
+      topic: EVENT_TOPICS.COMMENT,
+      partitions: count('CIVIC_COMMENT_PARTITIONS', PRODUCTION_PARTITIONS.comment),
     },
   ];
 }

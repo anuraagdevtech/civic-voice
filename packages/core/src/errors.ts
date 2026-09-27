@@ -35,6 +35,8 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
   invalid_transition: 409,
   k_anonymity_suppressed: 200,
   degraded: 503,
+  content_rejected: 422,
+  not_local: 403,
   internal: 500,
 };
 

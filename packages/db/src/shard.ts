@@ -44,6 +44,30 @@ export function vshardFor(citizenId: string): number {
   return hashCitizenId(citizenId) % VSHARD_COUNT;
 }
 
+/**
+ * FNV-1a over a topic id's 8 big-endian bytes. Discussion data — comments, votes, reports, digests —
+ * lives on its *topic's* shard, because every read of it is "this topic's thread" and must be one
+ * shard; the author's own index of what they wrote stays on the citizen's shard (ADR-0008).
+ */
+export function hashTopicId(topicId: number): number {
+  if (!Number.isSafeInteger(topicId) || topicId <= 0)
+    throw new RangeError(`not a topic id: ${topicId}`);
+  let hash = 0x811c9dc5;
+  const high = Math.floor(topicId / 2 ** 32);
+  const low = topicId >>> 0;
+  for (const word of [high, low]) {
+    for (let shift = 24; shift >= 0; shift -= 8) {
+      hash ^= (word >>> shift) & 0xff;
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+  }
+  return hash >>> 0;
+}
+
+export function vshardForTopic(topicId: number): number {
+  return hashTopicId(topicId) % VSHARD_COUNT;
+}
+
 export interface ClusterConfig {
   id: string;
   connectionString: string;

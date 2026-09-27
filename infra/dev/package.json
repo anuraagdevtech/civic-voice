@@ -1,0 +1,26 @@
+{
+  "name": "@civic-voice/dev-stack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The whole platform in one process on in-memory adapters, for UI work and demos.",
+  "scripts": {
+    "start": "node memory-stack.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@civic-voice/analytics": "workspace:*",
+    "@civic-voice/api": "workspace:*",
+    "@civic-voice/cache": "workspace:*",
+    "@civic-voice/contracts": "workspace:*",
+    "@civic-voice/core": "workspace:*",
+    "@civic-voice/db": "workspace:*",
+    "@civic-voice/geo": "workspace:*",
+    "@civic-voice/ingest": "workspace:*",
+    "@civic-voice/ingestor": "workspace:*",
+    "@civic-voice/nlp": "workspace:*",
+    "@civic-voice/observability": "workspace:*",
+    "@civic-voice/stream": "workspace:*",
+    "@civic-voice/worker": "workspace:*"
+  }
+}
