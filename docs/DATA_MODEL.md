@@ -78,7 +78,8 @@ Also: `kind`, `codes` (jsonb — LGD / census / ECI codes, so external datasets 
 ### `topic`
 A government decision, policy, scheme, law or budget line — the thing a citizen has a mood
 about. `kind`, `jurisdiction_region_id`, `authority_id`, `scheme_id`, `status`, `titles`
-(jsonb per-locale), `summary`, `effective_from`, `source_refs` (jsonb).
+(jsonb per-locale), `summary`, `effective_from`, `source_refs` (jsonb), and `sector` — the
+programme spending head it is about, or null (ADR-0013).
 
 Every topic is anchored to a jurisdiction, which bounds its rollup fan-out and makes
 "policies that apply to me" a path-prefix query.
@@ -99,6 +100,14 @@ The tax-utilisation spine, modelled as the money actually moves:
 
 Per-capita metrics are derived from `region.population` at query time, not stored, so a census
 update does not require a backfill.
+
+### `fiscal_line`
+A government's accounts, for taxes collected, spending by sector and the gap between them
+(ADR-0013). Primary key `(region_id, fy, stage, category)`: the government is a region (the country
+for the Union, a state for itself), the stage is `BE`, `RE` or `actual`, and the category comes from
+a closed vocabulary — nine taxes, five other receipts, twelve programme and four committed spending
+heads. `amount_crore`, `source_name`, `source_url`, `provenance`. A few hundred rows per government,
+loaded from a reviewed file (`pnpm finance:load`), so reads take them all and compute in memory.
 
 ### `disclosure`
 An RTI response that has been published: content-addressed (`sha256`) object-store pointer,

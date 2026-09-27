@@ -18,6 +18,8 @@ Built and sized for **1B+ registered citizens**.
 | **Near me** | Location resolves to a ward (Greater Hyderabad's 145 real wards today) and is never stored. The home page shows what people where you live are discussing, new orders and projects for your area, and the government jobs open to you. |
 | **Youth, farmers and more** | What each group raises — jobs, exams, crop prices, water — from model-labelled comments, published only when at least 25 distinct people contributed. |
 | **Money and jobs** | Budgets, deficits, debt, prices, unemployment and crop MSPs with their sources; open government job notifications and the vacancies they state. |
+| **Taxes and spending** | What the Union and your state collect in each tax — income tax, GST, customs, corporation tax, excise — what they spend on each sector, and the gap: how many paise of each rupee spent the taxes paid for, and what covered the rest. |
+| **For researchers** | Opinion against allocation: each sector's share of spending beside its share of what residents raise and their mood on the government's decisions there, by age, gender, income, occupation, employment status and more; as CSV. |
 
 They are joined by the region hierarchy and the topic graph. A district's mood on a scheme, the
 RTI responses about that scheme, and the rupees actually spent on it in that district are all
@@ -44,7 +46,7 @@ pnpm dev:api & pnpm dev:worker & pnpm dev:web
 ```
 
 ```bash
-pnpm test            # ~470 unit and conformance tests, no daemon required
+pnpm test            # ~600 unit and conformance tests, no daemon required
 pnpm typecheck       # the whole workspace, including both client apps
 pnpm nlp:evaluate    # cross-validated accuracy of the comment model, against baselines
 pnpm ingest:check    # every source through the full ingestion pipeline (--live for the real sites)
@@ -112,7 +114,7 @@ Details in [docs/PRIVACY.md](docs/PRIVACY.md).
 ## Layout
 
 ```
-apps/web         Vite + React PWA — static, CDN-first, ~103 kB gzipped, offline write queue
+apps/web         Vite + React PWA — static, CDN-first, ~107 kB gzipped, offline write queue
 apps/mobile      Expo React Native app on the same SDK
 services/api     Stateless Fastify API — idempotent ingest, edge-cacheable reads
 services/worker  Aggregation and comment pipelines, RTI deadline sweeper, reconciliation
@@ -130,7 +132,7 @@ packages/
   geo            The region tree, real ward boundaries, point-in-polygon location lookup
   ingest         Polite fetching, RSS/HTML/PDF parsing, GO and vacancy extraction, geo-tagging
 infra/           docker-compose, Kubernetes, a Terraform sketch, the load-test harness, the dev stack
-docs/            Architecture, scaling, data model, privacy, trust, RTI — and 12 ADRs
+docs/            Architecture, scaling, data model, privacy, trust, RTI — and 13 ADRs
 ```
 
 Every infrastructure dependency is an interface with two implementations, a real one and an

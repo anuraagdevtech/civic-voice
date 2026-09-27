@@ -21,8 +21,10 @@ left for someone to discover.
 | Comment ML | In-house multilingual sentiment, 14 needs and suggestion detection with calibrated confidence; budgeted escalation to a large model; evaluated by cross-validation against baselines. |
 | Where people live | Cities as regions; 145 real GHMC ward boundaries; location resolved once and never kept; device-confirmed home regions. |
 | Public documents | Polite ingestion framework for central, Telangana and Andhra Pradesh sources; GO/gazette/vacancy/amount extraction; precision-first geo-tagging; discussable documents become topics. |
-| Jobs, indicators, cohorts | Open government job notifications with stated vacancies; socio-economic indicators with sources; youth/farmer/women/student insights behind the k-gate. |
-| Clients | Web PWA (~103 kB gzipped) with an offline write queue and the full forum; Expo mobile app on the same SDK with onboarding and the Near me thread. |
+| Jobs, indicators, cohorts | Open government job notifications with stated vacancies; socio-economic indicators with sources; youth/farmer/women/student/job-seeker insights behind the k-gate. |
+| Public finances | Taxes collected by category, spending by sector and the gap, for the Union and each state, per year and stage, every figure sourced; the gap reconciled or shown as unreconciled (ADR-0013). |
+| Opinion against allocation | Per sector: share of programme spending, share of what residents raise, and mood on the government's own decisions, by any demographic dimension; per-topic gating before combining; CSV for researchers. Verified against real ClickHouse. |
+| Clients | Web PWA (~107 kB gzipped) with an offline write queue and the full forum; Expo mobile app on the same SDK with onboarding and the Near me thread. |
 | Adapters | Postgres, Redis, Kafka/Redpanda and ClickHouse, each with an in-memory twin held to one conformance suite. |
 
 ## Stubbed — the shape is right, the integration is not there
@@ -55,6 +57,13 @@ moderator. The queue, the reviewer tooling and the author's appeal are not built
 **Indicator figures.** The indicator catalogue names real sources, but the values loaded in
 development are samples, badged as such. Load published figures with `pnpm indicators:load <file>`.
 
+**Budget figures.** The Union and Telangana budgets loaded in development are samples of roughly the
+right magnitude, badged as such. Each government's published Budget at a Glance or Annual Financial
+Statement needs mapping to the category vocabulary in a reviewed file, then
+`pnpm finance:load <file>`; the loader refuses unknown or duplicate categories and warns on budgets
+that do not reconcile. Existing topics created before sectors existed have none until re-classified
+or set by hand.
+
 **Catalogue datasets.** The seed carries a representative slice of real Indian geography and central
 schemes. Production needs the full LGD, Census and ECI datasets (~800k regions), and an ingestion
 pipeline for budget documents. The `codes` column exists so those join without fuzzy name matching.
@@ -69,7 +78,8 @@ pipeline for budget documents. The `codes` column exists so those join without f
 - **Ward boundaries beyond Greater Hyderabad.** Location lookup covers GHMC only; elsewhere it says
   "not mapped yet" and the person picks from the list.
 - **Mobile parity.** Device-location confirmation (needs `expo-location`), voting, reporting, raising
-  issues, insights, jobs and indicators are web-only for now.
+  issues, insights, jobs, indicators, public finances and opinion against allocation are web-only
+  for now.
 - **OCR** for scanned GO PDFs, which are flagged `needs_ocr` and indexed by title only.
 - **Localisation.** The 22 scheduled languages are modelled throughout (`locale`, `names`, `titles`);
   no translations are loaded and the UI strings are not extracted.
@@ -93,6 +103,12 @@ pipeline for budget documents. The `codes` column exists so those join without f
 - **The GHMC ward boundaries are a 2018 OpenStreetMap snapshot,** 145 of 150 wards (ADR-0010).
 - **The seed's budget lines are illustrative,** stored as `sample` and badged; RTI authorities carry
   no PIO/FAA contacts until they are loaded from each authority's published list.
+- **Sector classification is lexical.** A topic is tagged from the need lexicon; a scheme known only
+  by its name ("Jal Jeevan Mission extension") gets no sector until someone sets it. Opinion by
+  sector covers a government's 2,000 newest sector-tagged decisions.
+- **The demo cannot show attention by sector.** Its 66 invented residents spread over twelve sectors
+  rarely reach 25 distinct voices in one, so the view shows spending with attention withheld — the
+  gate working as designed, and k cannot be lowered below 25.
 - **The Terraform is a sketch.** It records shape and sizing, not a deployable root module.
 - **The capacity model rests on measured and assumed inputs.** `pnpm loadtest` measures the one that
   matters most (per-write service time) and fails loudly when it drifts; the demand assumptions are

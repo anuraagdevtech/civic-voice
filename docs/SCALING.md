@@ -211,3 +211,17 @@ Three things carry this:
 
 The ingestor is not on this table: a few dozen sources polled every 30–120 minutes is negligible
 load, and it is deliberately a single replica (ADR-0012).
+
+## 12. Public finances and research reads
+
+Neither grows with the number of citizens (ADR-0013).
+
+- **Taxes, spending and the gap** read one government's `fiscal_line` rows — a few hundred at most,
+  all years and stages — and compute in memory. Budgets change twice a year, so the response is
+  edge-cached for an hour; origin sees a handful of requests per government per POP per hour.
+- **Opinion against allocation** is three reads whatever the catalogue or the traffic: the budget
+  lines and at most 2,000 of the government's newest sector-tagged topics from the catalogue (one
+  partial-index range scan), one `comment_event` scan with five aggregates per sector in the same
+  pass, and one `mood_rollup` scan over all the topics at once. It is a research read, edge-cached
+  for 15 minutes by its full query; ClickHouse is the store designed for scans of this shape, and
+  the hot path (Redis) is never touched.

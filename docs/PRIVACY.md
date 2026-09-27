@@ -22,6 +22,7 @@ Demographics are stored only as coarse bands, assigned on the client before tran
 | Income | 5 bands, indexed to per-capita income deciles |
 | Education | 5 bands, up to postgraduate |
 | Occupation | 8 bands (agriculture, informal labour, salaried private, government, self-employed, student, homemaker, retired/other) |
+| Employment status | 4 bands, as PLFS defines them (working regularly, working casually or seasonally, not working and looking, not in the labour force) |
 
 No birth date. No exact income. No employer. **A value never collected cannot leak, be
 subpoenaed, or be correlated.** Band assignment is client-side and one-way.
@@ -68,6 +69,14 @@ nearest 10 above 1,000.
 
 The gate is a single function every read path must pass through, rather than a rule each
 endpoint remembers to apply. Tests assert the subtraction attack fails.
+
+**Figures that combine several topics** (opinion against allocation, ADR-0013) cannot be gated on
+people: pseudonyms are per topic, so the same person across two topics cannot be counted once — by
+design. Instead each topic is gated on its own, only its publishable figures enter the sum, and the
+sum is gated again. Every number in a sector figure was therefore publishable by itself, and a group
+withheld in every topic is withheld in the sector rather than shown as zero. The same figures'
+attention shares, published side by side for every sector, get complementary suppression across the
+sectors.
 
 ## 4. No raw government identifiers, ever
 

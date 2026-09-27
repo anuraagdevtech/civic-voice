@@ -11,6 +11,7 @@
  *   pnpm infra:up && pnpm migrate && pnpm seed
  *   node packages/analytics/src/cli/migrate.ts
  *   pnpm ingest:run --fixtures        # sample GOs and job notifications, for the forum section
+ *   pnpm finance:load --sample        # sample Union and state budgets, for the finance section
  *   CIVIC_SENTIMENT_PARTITIONS=8 CIVIC_COMMENT_PARTITIONS=8 CIVIC_TOPIC_COOLDOWN_SECONDS=3 pnpm dev:api &
  *   CIVIC_SENTIMENT_PARTITIONS=8 CIVIC_COMMENT_PARTITIONS=8 pnpm dev:worker &
  *   BASE=http://localhost:8080 COOLDOWN_SECONDS=3 pnpm e2e
@@ -315,6 +316,20 @@ ok(
   'trust: the default public view excludes unverified citizens',
   publicView.json?.total?.suppressed === true,
   `n=${publicView.json?.total?.n} suppressed=${publicView.json?.total?.suppressed}`,
+);
+
+const byEmployment = await call(
+  `/v1/topics/${national.id}/mood?region_id=${ac.id}&dimension=employment_status&tier=0`,
+);
+const employmentBucket = (name) => byEmployment.json?.buckets?.find((b) => b.bucket === name);
+ok(
+  'read: employment status is a dimension of its own, all four bands present',
+  byEmployment.json?.buckets?.length === 4 &&
+    employmentBucket('employed_irregular')?.suppressed === false &&
+    employmentBucket('unemployed_seeking')?.n === 0,
+  (byEmployment.json?.buckets ?? [])
+    .map((b) => `${b.bucket}:${b.suppressed ? 'x' : b.n}`)
+    .join(' '),
 );
 
 // Changing an opinion must not inflate the cohort.
@@ -698,6 +713,67 @@ ok(
   'privacy: erasure removes the person’s comments from the thread',
   theirs !== undefined && blanked === undefined,
   theirs?.id,
+);
+
+// ── 10. Taxes, spending, the gap — and opinion against allocation (ADR-0013) ──
+const finance = await call('/v1/finance?region_id=1');
+const taxes = finance.json?.summary?.taxes?.items?.map((i) => i.category) ?? [];
+ok(
+  'finance: the Union’s taxes by category',
+  ['income_tax', 'corporate_tax', 'gst', 'customs', 'excise'].every((c) => taxes.includes(c)),
+  taxes.join(','),
+);
+ok(
+  'finance: spending by sector, and the gap reconciled to the rupee',
+  (finance.json?.summary?.spending?.items?.length ?? 0) >= 6 &&
+    finance.json?.summary?.gap?.reconciles === true &&
+    finance.json?.summary?.gap?.residual === 0,
+  finance.json?.summary?.gap?.explanation,
+);
+ok(
+  'finance: sample figures are labelled as samples',
+  finance.json?.summary?.provenance?.includes('sample') === true,
+);
+const upFinance = await call(`/v1/finance?region_id=${up.id}`);
+ok(
+  'finance: a government with no loaded budget says so rather than showing zeros',
+  upFinance.status === 200 && upFinance.json?.summary === null,
+);
+
+const sectorOf = national.sector;
+const sectors = await call('/v1/insights/sectors?region_id=1&tier=0');
+const row = sectors.json?.sectors?.find((s) => s.sector === sectorOf);
+ok(
+  'allocation: the national topic carries a sector',
+  typeof sectorOf === 'string' && row !== undefined,
+  sectorOf,
+);
+ok(
+  'allocation: mood on the Union’s own decisions sits beside the sector’s spending share',
+  (row?.mood?.total?.n ?? 0) >= 25 &&
+    row?.mood?.total?.suppressed === false &&
+    (row?.spending?.share_of_programmes ?? 0) > 0,
+  `n=${row?.mood?.total?.n} mood=${row?.mood?.total?.mean_mood} spend=${row?.spending?.share_of_programmes}`,
+);
+const sectorsByAge = await call('/v1/insights/sectors?region_id=1&tier=0&dimension=age_band');
+const ageRow = sectorsByAge.json?.sectors?.find((s) => s.sector === sectorOf);
+ok(
+  'allocation: by age, every bucket either published or withheld — never a bare zero for people who exist',
+  (ageRow?.mood?.buckets ?? []).every((b) => b.suppressed || b.n > 0 || b.mean_mood === null) &&
+    (ageRow?.mood?.buckets?.length ?? 0) === 6,
+  (ageRow?.mood?.buckets ?? []).map((b) => `${b.bucket}:${b.suppressed ? 'x' : b.n}`).join(' '),
+);
+const csv = await fetch(`${base}/v1/insights/sectors?region_id=1&format=csv`);
+const csvText = await csv.text();
+ok(
+  'allocation: CSV for researchers, one row per sector',
+  /text\/csv/.test(csv.headers.get('content-type') ?? '') &&
+    csvText.trim().split('\n').length === 13,
+  csv.headers.get('content-type'),
+);
+ok(
+  'allocation: every response states its method and that it is not causal',
+  (sectors.json?.method ?? []).some((m) => /associations, not causes/.test(m)),
 );
 
 console.log(`\n${'='.repeat(60)}\n${passes} passed, ${failures} failed\n${'='.repeat(60)}`);

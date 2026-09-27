@@ -18,3 +18,4 @@ preference, and the next person cannot tell whether it still holds.
 | [0010](./0010-where-people-live.md) | Local questions for local people: cities, wards, a location never kept | Accepted |
 | [0011](./0011-in-house-model-first.md) | An in-house model on every comment; a large model where it is unsure | Accepted |
 | [0012](./0012-polite-precise-ingestion.md) | Scrape politely, extract precisely, scope no narrower than the evidence | Accepted |
+| [0013](./0013-public-finances-and-opinion-against-allocation.md) | Show the gap as the budget does; gate every topic before combining opinion | Accepted |
