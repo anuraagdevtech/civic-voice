@@ -43,11 +43,14 @@ export const badRequest = (m: string, details?: unknown) =>
 export const unauthorized = (m = 'authentication required') => new DomainError('unauthorized', m);
 export const forbidden = (m = 'not permitted') => new DomainError('forbidden', m);
 export const notFound = (m = 'not found') => new DomainError('not_found', m);
-export const conflict = (m: string, details?: unknown) => new DomainError('conflict', m, { details });
+export const conflict = (m: string, details?: unknown) =>
+  new DomainError('conflict', m, { details });
 export const rateLimited = (retryAfterSeconds: number) =>
   new DomainError('rate_limited', 'write quota exceeded', { retryAfterSeconds });
 export const cooldownActive = (retryAfterSeconds: number) =>
-  new DomainError('cooldown_active', 'you changed this opinion too recently', { retryAfterSeconds });
+  new DomainError('cooldown_active', 'you changed this opinion too recently', {
+    retryAfterSeconds,
+  });
 export const invalidTransition = (from: string, to: string) =>
   new DomainError('invalid_transition', `cannot move an RTI request from ${from} to ${to}`, {
     details: { from, to },

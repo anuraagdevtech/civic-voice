@@ -86,10 +86,7 @@ export class MemoryCitizenRepository implements CitizenRepository {
     return { ...row, demographics: { ...row.demographics } };
   }
 
-  async setVerificationTier(
-    citizenId: string,
-    tier: VerificationTier,
-  ): Promise<CitizenRow | null> {
+  async setVerificationTier(citizenId: string, tier: VerificationTier): Promise<CitizenRow | null> {
     const row = this.rows.get(citizenId);
     if (!row || row.erased_at !== null) return null;
     row.verification_tier = tier;
@@ -284,6 +281,17 @@ export class MemoryCatalogueRepository implements CatalogueRepository {
     return (this.budget.get(`${regionId}:${fy}`) ?? [])
       .map((b) => ({ ...b }))
       .sort((a, b) => (b.allocated_be ?? -1) - (a.allocated_be ?? -1));
+  }
+
+  async budgetLinesForPath(regionIds: readonly number[], fy: string): Promise<BudgetLineRow[]> {
+    const depthOf = (id: number) => this.regions.get(id)?.path.length ?? 0;
+    return regionIds
+      .flatMap((id) => this.budget.get(`${id}:${fy}`) ?? [])
+      .map((b) => ({ ...b }))
+      .sort((a, b) => {
+        const byDepth = depthOf(b.region_id) - depthOf(a.region_id);
+        return byDepth !== 0 ? byDepth : (b.allocated_be ?? -1) - (a.allocated_be ?? -1);
+      });
   }
 
   async quarantinedBuckets(

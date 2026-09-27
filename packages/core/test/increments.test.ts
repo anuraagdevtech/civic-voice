@@ -7,20 +7,26 @@ import type { SentimentEvent } from '@civic-voice/contracts';
  * The merge is where a whole batch's arithmetic can go quietly wrong, so it is tested on its own.
  */
 const key = (over: Partial<RollupKey> = {}): RollupKey => ({
-  day: '2026-03-15', topicId: 1, regionId: 105, dim: 0, bucket: 'all', tier: 2, ...over,
+  day: '2026-03-15',
+  topicId: 1,
+  regionId: 105,
+  dim: 0,
+  bucket: 'all',
+  tier: 2,
+  ...over,
 });
 
 const mut = (k: RollupKey, mood: number, intensity: number, delta: 1 | -1) => ({
-  key: k, eventId: 'e', mood, intensity, delta,
+  key: k,
+  eventId: 'e',
+  mood,
+  intensity,
+  delta,
 });
 
 describe('increment accumulation', () => {
   test('sums counts and intensity for the same key and mood', () => {
-    const [inc] = incrementsFrom([
-      mut(key(), 1, 3, 1),
-      mut(key(), 1, 5, 1),
-      mut(key(), 1, 4, 1),
-    ]);
+    const [inc] = incrementsFrom([mut(key(), 1, 3, 1), mut(key(), 1, 5, 1), mut(key(), 1, 4, 1)]);
     assert.equal(inc?.count, 3);
     assert.equal(inc?.intensity, 12, 'exact sum, not an average');
   });
@@ -68,10 +74,17 @@ describe('increment accumulation', () => {
       pseudonym: 'a'.repeat(32),
       verification_tier: 2,
       demographics: {
-        age_band: '25-34', gender: 'female', urbanity: 'rural',
-        income_band: 'middle', education_band: 'graduate', occupation_band: 'agriculture',
+        age_band: '25-34',
+        gender: 'female',
+        urbanity: 'rural',
+        income_band: 'middle',
+        education_band: 'graduate',
+        occupation_band: 'agriculture',
       },
-      mood: 2, intensity: 3, reason_code: 'benefits_me', delta: 1,
+      mood: 2,
+      intensity: 3,
+      reason_code: 'benefits_me',
+      delta: 1,
       replaces: { mood: -2, intensity: 5, reason_code: 'no_reason' },
     };
     const out = incrementsFrom(mutationsFor(event));

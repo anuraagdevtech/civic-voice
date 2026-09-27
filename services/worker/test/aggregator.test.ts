@@ -31,7 +31,10 @@ describe('aggregator', () => {
     analytics = createMemoryAnalyticsStore();
     bus = createMemoryEventBus({ autoDeliver: false });
     aggregator = new Aggregator({
-      repos, cache, analytics, bus,
+      repos,
+      cache,
+      analytics,
+      bus,
       metrics: createMetrics(),
       logger: createTestLogger(),
     });
@@ -124,7 +127,11 @@ describe('aggregator', () => {
     assert.equal(first.applied, 1);
     assert.equal(second.applied, 0);
     assert.equal(second.deduped, 1);
-    assert.equal((await totalFor(7, 105)).total.n, 1, 'at-least-once delivery must not double count');
+    assert.equal(
+      (await totalFor(7, 105)).total.n,
+      1,
+      'at-least-once delivery must not double count',
+    );
   });
 
   test('REDELIVERY: a duplicate inside one batch is applied once', async () => {
@@ -189,7 +196,10 @@ describe('aggregator', () => {
     for (let i = 0; i < 50; i += 1) {
       const id = uuidv7();
       await repos.citizens.create({
-        id, region_id: 1052, region_path: [1, 10, 105, 1052], locale: 'hi',
+        id,
+        region_id: 1052,
+        region_path: [1, 10, 105, 1052],
+        locale: 'hi',
         demographics: { age_band: '25-34', gender: 'female' },
       });
       events.push(event({ citizen_id: id, mood: -2, intensity: 5 }));
@@ -209,12 +219,29 @@ describe('aggregator', () => {
   test('tiers are kept separate, so the default public view can exclude the unverified', async () => {
     const anonymous = uuidv7();
     await repos.citizens.create({
-      id: anonymous, region_id: 1052, region_path: [1, 10, 105, 1052], locale: 'en', demographics: {},
+      id: anonymous,
+      region_id: 1052,
+      region_path: [1, 10, 105, 1052],
+      locale: 'en',
+      demographics: {},
     });
-    await deliver(event({ mood: 2 }), event({ citizen_id: anonymous, verification_tier: 0, mood: -2 }));
+    await deliver(
+      event({ mood: 2 }),
+      event({ citizen_id: anonymous, verification_tier: 0, mood: -2 }),
+    );
 
-    const verified = await cache.counters.readSlice({ topicId: 7, regionId: 105, dim: 0, tiers: [2, 3] });
-    const everyone = await cache.counters.readSlice({ topicId: 7, regionId: 105, dim: 0, tiers: [0, 1, 2, 3] });
+    const verified = await cache.counters.readSlice({
+      topicId: 7,
+      regionId: 105,
+      dim: 0,
+      tiers: [2, 3],
+    });
+    const everyone = await cache.counters.readSlice({
+      topicId: 7,
+      regionId: 105,
+      dim: 0,
+      tiers: [0, 1, 2, 3],
+    });
     assert.equal(verified.total.n, 1);
     assert.equal(everyone.total.n, 2);
   });

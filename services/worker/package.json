@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "main": "src/main.ts",
-  "scripts": { "start": "node src/main.ts" },
+  "scripts": {
+    "start": "node src/main.ts"
+  },
   "dependencies": {
     "@civic-voice/analytics": "workspace:*",
     "@civic-voice/cache": "workspace:*",

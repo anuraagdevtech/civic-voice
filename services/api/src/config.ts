@@ -47,7 +47,8 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       ['CIVIC_IDENTITY_PEPPER', identityPepper],
       ['CIVIC_PSEUDONYM_SALT_ROOT', pseudonymSaltRoot],
     ] as const) {
-      if (value === INSECURE_DEFAULT) throw new Error(`${name} must be set when CIVIC_ENV=production`);
+      if (value === INSECURE_DEFAULT)
+        throw new Error(`${name} must be set when CIVIC_ENV=production`);
       if (value.length < 32) throw new Error(`${name} must be at least 32 characters`);
     }
   }
@@ -55,7 +56,9 @@ export function loadApiConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const k = Number(env['CIVIC_K_ANONYMITY'] ?? DEFAULT_K);
   if (!Number.isInteger(k) || k < DEFAULT_K) {
     // The gate itself also refuses to go below the floor; this makes the misconfiguration loud.
-    throw new Error(`CIVIC_K_ANONYMITY must be an integer >= ${DEFAULT_K}, got ${env['CIVIC_K_ANONYMITY']}`);
+    throw new Error(
+      `CIVIC_K_ANONYMITY must be an integer >= ${DEFAULT_K}, got ${env['CIVIC_K_ANONYMITY']}`,
+    );
   }
 
   return {

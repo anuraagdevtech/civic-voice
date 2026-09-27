@@ -158,7 +158,10 @@ export interface BudgetLineRow {
   scheme_id: number;
   scheme_name: string;
   region_id: number;
-  level: string;
+  /** Which region this money was published against — the level the figure actually belongs to. */
+  region_name: string | null;
+  /** Narrowed to the values the column's CHECK constraint permits, so callers need no cast. */
+  level: 'union' | 'state' | 'district' | 'local';
   allocated_be: number | null;
   revised_re: number | null;
   released: number | null;
@@ -187,6 +190,15 @@ export interface CatalogueRepository {
   }): Promise<TopicRow[]>;
   getAuthority(authorityId: number): Promise<AuthorityRow | null>;
   budgetLines(regionId: number, fy: string): Promise<BudgetLineRow[]>;
+  /**
+   * Budget lines for a region **and its ancestors**.
+   *
+   * Public spending is published at whichever level administers it — a central scheme at state level,
+   * a road at district level, a drain at ward level. A citizen in a constituency asking "where did my
+   * money go" must be shown all of it, not an empty panel because nothing happens to be recorded
+   * against their exact region.
+   */
+  budgetLinesForPath(regionIds: readonly number[], fy: string): Promise<BudgetLineRow[]>;
   quarantinedBuckets(topicId: number, regionId: number, dim: number): Promise<QuarantineRow[]>;
   addQuarantine(row: QuarantineRow & { detail?: string }): Promise<void>;
 }

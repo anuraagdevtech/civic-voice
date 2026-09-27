@@ -46,6 +46,12 @@ services:
       retries: 20
 
   # Redpanda speaks the Kafka protocol; one binary instead of Kafka + ZooKeeper/KRaft locally.
+  #
+  # A single-core node cannot host the 256 partitions production uses, so run the services with
+  # CIVIC_SENTIMENT_PARTITIONS=8 against this stack. The production value is the code default, and
+  # `ensureTopics` warns (and in production refuses to start) if a topic is under-partitioned —
+  # a broker auto-creating a topic with one partition would otherwise silently cap the aggregation
+  # pipeline at a single consumer.
   redpanda:
     image: redpandadata/redpanda:v24.2.7
     command:

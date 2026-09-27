@@ -299,6 +299,9 @@ export const budgetLineSchema = z.object({
   scheme_id: z.number().int().positive(),
   scheme_name: z.string(),
   region_id: regionId,
+  /** The region this figure was published against — the level it actually belongs to. */
+  region_name: z.string().nullable().default(null),
+  level: z.enum(['union', 'state', 'district', 'local']),
   allocated_be: z.number().nonnegative().nullable(),
   revised_re: z.number().nonnegative().nullable(),
   released: z.number().nonnegative().nullable(),

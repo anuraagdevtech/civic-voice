@@ -1,4 +1,5 @@
 import {
+  authoritySchema,
   errorResponse,
   moodAggregateSchema,
   mySentimentSchema,
@@ -52,6 +53,11 @@ export class CivicApiError extends Error {
   /**
    * Whether replaying the same request with the same idempotency key is safe and likely to help.
    * Mobile clients queue on this rather than surfacing an error the citizen can do nothing about.
+   *
+   * Note that `cooldown_active` is deliberately **not** retryable, even though it is a 429 like
+   * `rate_limited`. A cooldown means the citizen's opinion is *already recorded* and they are changing
+   * it too fast; auto-replaying ten minutes later would apply a change they never saw land, and by
+   * then may not hold. A `rate_limited` write genuinely did not happen, so replaying it is correct.
    */
   get retryable(): boolean {
     return this.status >= 500 || this.code === 'degraded' || this.code === 'rate_limited';
@@ -101,10 +107,15 @@ export class CivicVoiceClient {
     schema: T,
     opts: RequestOptions = {},
   ): Promise<z.infer<T>> {
-    const url = new URL(`${this.baseUrl}${path}`);
+    // Built as a string rather than through `new URL()`: the web app is served from the same origin
+    // as the API and so configures an empty `baseUrl`, and `new URL('/v1/...')` with no base throws.
+    // Relative and absolute bases both have to work.
+    const params = new URLSearchParams();
     for (const [key, value] of Object.entries(opts.query ?? {})) {
-      if (value !== undefined) url.searchParams.set(key, String(value));
+      if (value !== undefined) params.set(key, String(value));
     }
+    const queryString = params.toString();
+    const url = `${this.baseUrl}${path}${queryString.length > 0 ? `?${queryString}` : ''}`;
 
     const headers: Record<string, string> = { accept: 'application/json' };
     if (this.accessToken) headers['authorization'] = `Bearer ${this.accessToken}`;
@@ -184,7 +195,10 @@ export class CivicVoiceClient {
   }
 
   async childRegions(regionId: number) {
-    return this.request(`/v1/regions/${regionId}/children`, z.object({ items: z.array(regionSchema) }));
+    return this.request(
+      `/v1/regions/${regionId}/children`,
+      z.object({ items: z.array(regionSchema) }),
+    );
   }
 
   async topics(query: { region_id?: number; kind?: string; limit?: number } = {}) {
@@ -193,6 +207,10 @@ export class CivicVoiceClient {
 
   async topic(topicId: number) {
     return this.request(`/v1/topics/${topicId}`, topicSchema);
+  }
+
+  async authority(authorityId: number) {
+    return this.request(`/v1/authorities/${authorityId}`, authoritySchema);
   }
 
   // ── Sentiment ──
@@ -263,7 +281,11 @@ export function createClient(opts: ClientOptions): CivicVoiceClient {
  * attempt token, so a retry after a timeout carries the SAME key and cannot double-submit — which on
  * a patchy mobile network is the normal case, not the edge case.
  */
-export function idempotencyKeyFor(citizenId: string, topicId: number, attemptToken: string): string {
+export function idempotencyKeyFor(
+  citizenId: string,
+  topicId: number,
+  attemptToken: string,
+): string {
   return `${citizenId}:${topicId}:${attemptToken}`;
 }
 

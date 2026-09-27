@@ -1,0 +1,132 @@
+# The API tier. Stateless, so it scales purely on pod count (docs/ARCHITECTURE.md §2).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: civic-api
+  labels: { app: civic-api, tier: api }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: civic-api }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 25%, maxUnavailable: 0 }
+  template:
+    metadata:
+      labels: { app: civic-api, tier: api }
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
+        prometheus.io/path: /metrics
+    spec:
+      # Spread across zones. A civic platform going dark in one zone during a budget announcement is
+      # the failure everyone remembers.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: civic-api }
+      # Longer than the 250ms p99 ack budget by a wide margin: a pod must finish the writes it has
+      # already accepted before exiting, or submissions are dropped during a scale-down.
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: api
+          image: ghcr.io/civic-voice/api:latest
+          ports: [{ containerPort: 8080, name: http }]
+          env:
+            - { name: CIVIC_ENV, value: production }
+            - { name: PORT, value: '8080' }
+            - { name: NODE_OPTIONS, value: '--max-old-space-size=3072' }
+          envFrom:
+            - secretRef: { name: civic-secrets }
+            - configMapRef: { name: civic-config }
+          resources:
+            # Requests sized for steady state; the limit gives headroom for a spike before the HPA
+            # catches up. CPU is deliberately not limited — throttling a latency-sensitive write path
+            # converts a load spike into a timeout cascade.
+            requests: { cpu: '1', memory: 1Gi }
+            limits: { memory: 4Gi }
+          readinessProbe:
+            # Checks real dependencies: the Redis client runs with its offline queue disabled, so a
+            # pod that has not connected must not receive traffic.
+            httpGet: { path: /readyz, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            # Liveness is deliberately NOT /readyz: a dependency blip must take a pod out of the load
+            # balancer, not restart the whole fleet at the moment the dependency recovers.
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 4
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            failureThreshold: 20
+            periodSeconds: 3
+          lifecycle:
+            preStop:
+              # Let the load balancer notice the pod is going away before the process starts closing.
+              exec: { command: ['sleep', '10'] }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ['ALL'] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: civic-api
+spec:
+  selector: { app: civic-api }
+  ports: [{ port: 80, targetPort: http, name: http }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: civic-api
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: civic-api }
+  minReplicas: 3
+  # 66 pods covers the modelled 170k writes/s spike (docs/SCALING.md §3); the ceiling is set above it
+  # so an underestimate degrades rather than caps out.
+  maxReplicas: 120
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: 60 } }
+    - type: Pods
+      pods:
+        # In-flight requests lead CPU during a burst, so this is what actually reacts in time.
+        metric: { name: civic_http_inflight_requests }
+        target: { type: AverageValue, averageValue: '40' }
+  behavior:
+    scaleUp:
+      # Civic attention spikes 100x in minutes. Doubling every 15s is what keeps the queue from
+      # becoming the only thing absorbing it.
+      stabilizationWindowSeconds: 0
+      policies:
+        - { type: Percent, value: 100, periodSeconds: 15 }
+        - { type: Pods, value: 20, periodSeconds: 15 }
+      selectPolicy: Max
+    scaleDown:
+      # Slow, because a spike often comes in waves and re-scaling costs a cold start each time.
+      stabilizationWindowSeconds: 600
+      policies: [{ type: Percent, value: 10, periodSeconds: 60 }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: civic-api
+spec:
+  # Keeps a node drain or a cluster upgrade from taking the write path below quorum.
+  minAvailable: 70%
+  selector:
+    matchLabels: { app: civic-api }

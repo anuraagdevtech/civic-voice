@@ -1,0 +1,69 @@
+# The aggregation pipeline. Its own Deployment because it scales on consumer lag, which has nothing
+# to do with the API's request load — coupling them would mean over-provisioning one to serve the
+# other (docs/ARCHITECTURE.md §9).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: civic-worker
+  labels: { app: civic-worker, tier: worker }
+spec:
+  replicas: 4
+  selector:
+    matchLabels: { app: civic-worker }
+  strategy:
+    # Recreate, not RollingUpdate: two generations of consumers in one group trigger a rebalance
+    # storm, and a rebalance mid-batch is redelivery the dedupe layer then has to absorb.
+    type: Recreate
+  template:
+    metadata:
+      labels: { app: civic-worker, tier: worker }
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+    spec:
+      # Long enough to finish the in-flight batch and commit its offsets. Cutting a batch short is
+      # not data loss — it is redelivery — but it is wasted work at the worst moment.
+      terminationGracePeriodSeconds: 90
+      containers:
+        - name: worker
+          image: ghcr.io/civic-voice/worker:latest
+          env:
+            - { name: CIVIC_ENV, value: production }
+            - { name: NODE_OPTIONS, value: '--max-old-space-size=3072' }
+          envFrom:
+            - secretRef: { name: civic-secrets }
+            - configMapRef: { name: civic-config }
+          resources:
+            requests: { cpu: '2', memory: 2Gi }
+            limits: { memory: 4Gi }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ['ALL'] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+# Scaled on consumer lag rather than CPU: lag is the thing that actually matters (it is how stale the
+# published aggregates are), and it rises long before the pods are CPU-bound.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: civic-worker
+spec:
+  scaleTargetRef: { name: civic-worker }
+  minReplicaCount: 4
+  # Bounded by the partition count: more consumers than partitions sit idle (docs/SCALING.md §3).
+  maxReplicaCount: 64
+  cooldownPeriod: 300
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka:9092
+        consumerGroup: civic-aggregator
+        topic: civic.sentiment.v1
+        lagThreshold: '5000'

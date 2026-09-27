@@ -120,9 +120,7 @@ export class MemoryCounterStore implements CounterStore {
   async readSlice(query: SliceQuery): Promise<SliceResult> {
     const merged = new Map<string, RawBucket>();
     for (const tier of query.tiers) {
-      const slice = this.slices.get(
-        this.sliceKey(query.topicId, query.regionId, query.dim, tier),
-      );
+      const slice = this.slices.get(this.sliceKey(query.topicId, query.regionId, query.dim, tier));
       if (!slice) continue;
       for (const [bucket, raw] of slice) {
         const soFar = merged.get(bucket);
@@ -135,7 +133,9 @@ export class MemoryCounterStore implements CounterStore {
       total: totalOf(buckets),
       buckets,
       stalenessSeconds:
-        appliedAt === undefined ? 0 : Math.max(0, Math.round((this.clock.now() - appliedAt) / 1000)),
+        appliedAt === undefined
+          ? 0
+          : Math.max(0, Math.round((this.clock.now() - appliedAt) / 1000)),
     };
   }
 
@@ -250,11 +250,7 @@ export class MemoryIdempotencyStore implements IdempotencyStore {
 
   async complete(key: string, response: string): Promise<void> {
     const existing = this.records.get(key);
-    this.records.set(
-      key,
-      { hash: existing?.hash ?? '', response },
-      TTL.idempotencySeconds,
-    );
+    this.records.set(key, { hash: existing?.hash ?? '', response }, TTL.idempotencySeconds);
   }
 
   async release(key: string): Promise<void> {

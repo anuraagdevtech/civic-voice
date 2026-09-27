@@ -1,10 +1,10 @@
-import type {
-  Locale,
-  Mood,
-  RtiState,
-  VerificationTier,
-} from '@civic-voice/contracts';
-import { decodeDemographics, decodeReasonCode, encodeDemographics, encodeReasonCode } from '../codec.ts';
+import type { Locale, Mood, RtiState, VerificationTier } from '@civic-voice/contracts';
+import {
+  decodeDemographics,
+  decodeReasonCode,
+  encodeDemographics,
+  encodeReasonCode,
+} from '../codec.ts';
 import { vshardFor } from '../shard.ts';
 import type { Queryable, ShardRouter } from '../router.ts';
 import type {
@@ -29,11 +29,14 @@ import type {
 type Row = Record<string, unknown>;
 
 const asDate = (v: unknown): string | null =>
-  v === null || v === undefined ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
+  v === null || v === undefined
+    ? null
+    : v instanceof Date
+      ? v.toISOString().slice(0, 10)
+      : String(v);
 const asTimestamp = (v: unknown): string =>
   v instanceof Date ? v.toISOString() : new Date(String(v)).toISOString();
-const asNumber = (v: unknown): number | null =>
-  v === null || v === undefined ? null : Number(v);
+const asNumber = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
 function toCitizen(row: Row): CitizenRow {
   return {
@@ -51,9 +54,10 @@ function toCitizen(row: Row): CitizenRow {
       occupation_band: asNumber(row['occupation_band']),
     }),
     created_at: asTimestamp(row['created_at']),
-    erased_at: row['erased_at'] === null || row['erased_at'] === undefined
-      ? null
-      : asTimestamp(row['erased_at']),
+    erased_at:
+      row['erased_at'] === null || row['erased_at'] === undefined
+        ? null
+        : asTimestamp(row['erased_at']),
   };
 }
 
@@ -83,7 +87,12 @@ export class PgCitizenRepository implements CitizenRepository {
           input.region_path,
           input.verification_tier ?? 0,
           input.locale,
-          d.age_band, d.gender, d.urbanity, d.income_band, d.education_band, d.occupation_band,
+          d.age_band,
+          d.gender,
+          d.urbanity,
+          d.income_band,
+          d.education_band,
+          d.occupation_band,
         ],
       );
       return toCitizen(rows[0] as Row);
@@ -133,18 +142,19 @@ export class PgCitizenRepository implements CitizenRepository {
           patch.region_path ?? null,
           patch.locale ?? null,
           d !== null,
-          d?.age_band ?? null, d?.gender ?? null, d?.urbanity ?? null,
-          d?.income_band ?? null, d?.education_band ?? null, d?.occupation_band ?? null,
+          d?.age_band ?? null,
+          d?.gender ?? null,
+          d?.urbanity ?? null,
+          d?.income_band ?? null,
+          d?.education_band ?? null,
+          d?.occupation_band ?? null,
         ],
       );
       return rows[0] ? toCitizen(rows[0]) : null;
     });
   }
 
-  async setVerificationTier(
-    citizenId: string,
-    tier: VerificationTier,
-  ): Promise<CitizenRow | null> {
+  async setVerificationTier(citizenId: string, tier: VerificationTier): Promise<CitizenRow | null> {
     return this.router.withCitizenShard(citizenId, async (db) => {
       const { rows } = await db.query<Row>(
         `UPDATE civic_shard.citizen SET verification_tier = $2, updated_at = now()
@@ -171,7 +181,9 @@ export class PgCitizenRepository implements CitizenRepository {
         [citizenId],
       );
       if ((rowCount ?? 0) === 0) return false;
-      await db.query(`DELETE FROM civic_shard.sentiment_current WHERE citizen_id = $1`, [citizenId]);
+      await db.query(`DELETE FROM civic_shard.sentiment_current WHERE citizen_id = $1`, [
+        citizenId,
+      ]);
       await db.query(`DELETE FROM civic_shard.follow WHERE citizen_id = $1`, [citizenId]);
       return true;
     });
@@ -268,7 +280,14 @@ export class PgSentimentRepository implements SentimentRepository {
            b.citizen_id, b.topic_id, b.mood, b.intensity, b.reason_code, b.event_id, b.updated_at
          FROM (SELECT 1) AS one
          LEFT JOIN before b ON true`,
-        [citizenId, row.topic_id, row.mood, row.intensity, encodeReasonCode(row.reason_code), row.event_id],
+        [
+          citizenId,
+          row.topic_id,
+          row.mood,
+          row.intensity,
+          encodeReasonCode(row.reason_code),
+          row.event_id,
+        ],
       );
       const result = rows[0] as Row | undefined;
       const applied = Number(result?.['changed'] ?? 0) > 0;
@@ -301,7 +320,8 @@ function toRti(row: Row): RtiRequestRow {
     id: String(row['id']),
     citizen_id: String(row['citizen_id']),
     authority_id: Number(row['authority_id']),
-    topic_id: row['topic_id'] === null || row['topic_id'] === undefined ? null : Number(row['topic_id']),
+    topic_id:
+      row['topic_id'] === null || row['topic_id'] === undefined ? null : Number(row['topic_id']),
     subject: String(row['subject']),
     track: String(row['track']) as RtiRequestRow['track'],
     state: String(row['state']) as RtiState,
@@ -344,8 +364,14 @@ export class PgRtiRepository implements RtiRepository {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING ${RTI_COLUMNS}`,
         [
-          input.id, input.citizen_id, input.authority_id, input.topic_id, input.subject,
-          input.track, input.state ?? (input.filed_at ? 'filed' : 'draft'), input.filed_at,
+          input.id,
+          input.citizen_id,
+          input.authority_id,
+          input.topic_id,
+          input.subject,
+          input.track,
+          input.state ?? (input.filed_at ? 'filed' : 'draft'),
+          input.filed_at,
         ],
       );
       return toRti(rows[0] as Row);
@@ -384,7 +410,9 @@ export class PgRtiRepository implements RtiRepository {
     const dateColumn = STATE_DATE_COLUMN[to];
     return this.router.withCitizenShard(citizenId, async (db) => {
       // The column name comes from a closed map keyed by a validated enum, never from user input.
-      const setDate = dateColumn ? `, ${dateColumn} = COALESCE($4::date, ${dateColumn}, CURRENT_DATE)` : '';
+      const setDate = dateColumn
+        ? `, ${dateColumn} = COALESCE($4::date, ${dateColumn}, CURRENT_DATE)`
+        : '';
       const { rows } = await db.query<Row>(
         `UPDATE civic_shard.rti_request
          SET state = $3, updated_at = now()${setDate}
@@ -400,7 +428,8 @@ export class PgRtiRepository implements RtiRepository {
 function toRegion(row: Row): RegionRow {
   return {
     id: Number(row['id']),
-    parent_id: row['parent_id'] === null || row['parent_id'] === undefined ? null : Number(row['parent_id']),
+    parent_id:
+      row['parent_id'] === null || row['parent_id'] === undefined ? null : Number(row['parent_id']),
     kind: String(row['kind']),
     path: (row['path'] as (number | string)[]).map(Number),
     name: String(row['name']),
@@ -418,8 +447,26 @@ function toTopic(row: Row): TopicRow {
     authority_id: asNumber(row['authority_id']),
     scheme_id: asNumber(row['scheme_id']),
     title: String(row['title']),
-    summary: row['summary'] === null || row['summary'] === undefined ? null : String(row['summary']),
+    summary:
+      row['summary'] === null || row['summary'] === undefined ? null : String(row['summary']),
     effective_from: asDate(row['effective_from']),
+    source_refs: (row['source_refs'] ?? []) as string[],
+  };
+}
+
+function toBudgetLine(row: Row): BudgetLineRow {
+  return {
+    id: Number(row['id']),
+    fy: String(row['fy']),
+    scheme_id: Number(row['scheme_id']),
+    scheme_name: String(row['scheme_name']),
+    region_id: Number(row['region_id']),
+    region_name: row['region_name'] === undefined ? null : String(row['region_name']),
+    level: String(row['level']) as BudgetLineRow['level'],
+    allocated_be: asNumber(row['allocated_be']),
+    revised_re: asNumber(row['revised_re']),
+    released: asNumber(row['released']),
+    utilised: asNumber(row['utilised']),
     source_refs: (row['source_refs'] ?? []) as string[],
   };
 }
@@ -433,9 +480,9 @@ export class PgCatalogueRepository implements CatalogueRepository {
 
   async getRegion(regionId: number): Promise<RegionRow | null> {
     return this.router.catalogue(async (db) => {
-      const { rows } = await db.query<Row>(
-        `SELECT * FROM civic_catalogue.region WHERE id = $1`, [regionId],
-      );
+      const { rows } = await db.query<Row>(`SELECT * FROM civic_catalogue.region WHERE id = $1`, [
+        regionId,
+      ]);
       return rows[0] ? toRegion(rows[0]) : null;
     });
   }
@@ -444,7 +491,8 @@ export class PgCatalogueRepository implements CatalogueRepository {
     if (regionIds.length === 0) return [];
     return this.router.catalogue(async (db) => {
       const { rows } = await db.query<Row>(
-        `SELECT * FROM civic_catalogue.region WHERE id = ANY($1::bigint[])`, [[...regionIds]],
+        `SELECT * FROM civic_catalogue.region WHERE id = ANY($1::bigint[])`,
+        [[...regionIds]],
       );
       return rows.map(toRegion);
     });
@@ -453,7 +501,8 @@ export class PgCatalogueRepository implements CatalogueRepository {
   async childRegions(parentId: number): Promise<RegionRow[]> {
     return this.router.catalogue(async (db) => {
       const { rows } = await db.query<Row>(
-        `SELECT * FROM civic_catalogue.region WHERE parent_id = $1 ORDER BY name`, [parentId],
+        `SELECT * FROM civic_catalogue.region WHERE parent_id = $1 ORDER BY name`,
+        [parentId],
       );
       return rows.map(toRegion);
     });
@@ -461,9 +510,9 @@ export class PgCatalogueRepository implements CatalogueRepository {
 
   async getTopic(topicId: number): Promise<TopicRow | null> {
     return this.router.catalogue(async (db) => {
-      const { rows } = await db.query<Row>(
-        `SELECT * FROM civic_catalogue.topic WHERE id = $1`, [topicId],
-      );
+      const { rows } = await db.query<Row>(`SELECT * FROM civic_catalogue.topic WHERE id = $1`, [
+        topicId,
+      ]);
       return rows[0] ? toTopic(rows[0]) : null;
     });
   }
@@ -485,7 +534,12 @@ export class PgCatalogueRepository implements CatalogueRepository {
            AND ($3::text IS NULL OR t.status = $3)
          ORDER BY t.effective_from DESC NULLS LAST, t.id DESC
          LIMIT $4`,
-        [opts.regionId ?? null, opts.kind ?? null, opts.status ?? null, Math.min(opts.limit ?? 50, 200)],
+        [
+          opts.regionId ?? null,
+          opts.kind ?? null,
+          opts.status ?? null,
+          Math.min(opts.limit ?? 50, 200),
+        ],
       );
       return rows.map(toTopic);
     });
@@ -494,7 +548,8 @@ export class PgCatalogueRepository implements CatalogueRepository {
   async getAuthority(authorityId: number): Promise<AuthorityRow | null> {
     return this.router.catalogue(async (db) => {
       const { rows } = await db.query<Row>(
-        `SELECT * FROM civic_catalogue.authority WHERE id = $1`, [authorityId],
+        `SELECT * FROM civic_catalogue.authority WHERE id = $1`,
+        [authorityId],
       );
       const row = rows[0];
       if (!row) return null;
@@ -512,26 +567,32 @@ export class PgCatalogueRepository implements CatalogueRepository {
   async budgetLines(regionId: number, fy: string): Promise<BudgetLineRow[]> {
     return this.router.catalogue(async (db) => {
       const { rows } = await db.query<Row>(
-        `SELECT b.*, s.name AS scheme_name
+        `SELECT b.*, s.name AS scheme_name, r.name AS region_name
          FROM civic_catalogue.budget_line b
          JOIN civic_catalogue.scheme s ON s.id = b.scheme_id
+         JOIN civic_catalogue.region r ON r.id = b.region_id
          WHERE b.region_id = $1 AND b.fy = $2
          ORDER BY b.allocated_be DESC NULLS LAST`,
         [regionId, fy],
       );
-      return rows.map((row) => ({
-        id: Number(row['id']),
-        fy: String(row['fy']),
-        scheme_id: Number(row['scheme_id']),
-        scheme_name: String(row['scheme_name']),
-        region_id: Number(row['region_id']),
-        level: String(row['level']),
-        allocated_be: asNumber(row['allocated_be']),
-        revised_re: asNumber(row['revised_re']),
-        released: asNumber(row['released']),
-        utilised: asNumber(row['utilised']),
-        source_refs: (row['source_refs'] ?? []) as string[],
-      }));
+      return rows.map(toBudgetLine);
+    });
+  }
+
+  async budgetLinesForPath(regionIds: readonly number[], fy: string): Promise<BudgetLineRow[]> {
+    if (regionIds.length === 0) return [];
+    return this.router.catalogue(async (db) => {
+      // One query over the whole ancestor chain — at most five ids, so this stays an index scan.
+      const { rows } = await db.query<Row>(
+        `SELECT b.*, s.name AS scheme_name, r.name AS region_name, r.kind AS region_kind
+         FROM civic_catalogue.budget_line b
+         JOIN civic_catalogue.scheme s ON s.id = b.scheme_id
+         JOIN civic_catalogue.region r ON r.id = b.region_id
+         WHERE b.region_id = ANY($1::bigint[]) AND b.fy = $2
+         ORDER BY array_length(r.path, 1) DESC, b.allocated_be DESC NULLS LAST`,
+        [[...regionIds], fy],
+      );
+      return rows.map(toBudgetLine);
     });
   }
 

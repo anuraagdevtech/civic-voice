@@ -180,7 +180,9 @@ export class SentimentService {
     // Buckets the anomaly detectors quarantined are suppressed with a disclosed reason, never
     // silently dropped (docs/TRUST.md §4).
     const quarantined = new Set(
-      (await this.deps.repos.catalogue.quarantinedBuckets(topicId, regionId, dim)).map((q) => q.bucket),
+      (await this.deps.repos.catalogue.quarantinedBuckets(topicId, regionId, dim)).map(
+        (q) => q.bucket,
+      ),
     );
 
     // Include every bucket the dimension can hold, so an absent one reads as zero rather than as
@@ -194,6 +196,10 @@ export class SentimentService {
       k: this.deps.kAnonymity ?? DEFAULT_K,
       quarantined,
     });
+
+    // For the undifferentiated view the total *is* the answer, so echoing it back as a single bucket
+    // would just be the same number twice under a different name.
+    const publishedBuckets = dim === DIMENSION_TOTAL ? [] : gated.buckets;
     const suppressedCount = gated.buckets.filter((b) => b.suppressed).length;
     if (suppressedCount > 0) {
       this.deps.metrics.inc('civic_anonymity_suppressions_total', {}, suppressedCount);
@@ -205,7 +211,7 @@ export class SentimentService {
       dimension: query.dimension ?? null,
       tier: minTier,
       total: gated.total,
-      buckets: gated.buckets,
+      buckets: publishedBuckets,
       staleness_seconds: slice.stalenessSeconds,
       tier_divergence: await this.divergence(topicId, regionId),
       computed_at: new Date().toISOString(),
@@ -219,10 +225,16 @@ export class SentimentService {
   private async divergence(topicId: number, regionId: number): Promise<number | null> {
     const [anonymous, verified] = await Promise.all([
       this.deps.cache.counters.readSlice({
-        topicId, regionId, dim: DIMENSION_TOTAL, tiers: [VERIFICATION_TIERS.ANONYMOUS],
+        topicId,
+        regionId,
+        dim: DIMENSION_TOTAL,
+        tiers: [VERIFICATION_TIERS.ANONYMOUS],
       }),
       this.deps.cache.counters.readSlice({
-        topicId, regionId, dim: DIMENSION_TOTAL, tiers: tiersAtOrAbove(DEFAULT_PUBLIC_TIER),
+        topicId,
+        regionId,
+        dim: DIMENSION_TOTAL,
+        tiers: tiersAtOrAbove(DEFAULT_PUBLIC_TIER),
       }),
     ]);
     // Both sides need enough people to mean anything, and k is the floor we already trust.

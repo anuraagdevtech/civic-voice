@@ -133,7 +133,10 @@ export class RtiSweeper {
         } catch (err) {
           // A failed notification must not abort the sweep: the state change is already persisted, and
           // the citizen will see it next time they open the app.
-          this.deps.logger.error({ err, request_id: notification.requestId }, 'notification failed');
+          this.deps.logger.error(
+            { err, request_id: notification.requestId },
+            'notification failed',
+          );
         }
       }
     }

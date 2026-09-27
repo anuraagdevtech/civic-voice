@@ -1,5 +1,11 @@
 import type { AnalyticsEvent, VerificationTier } from '@civic-voice/contracts';
-import { dayOf, emptyRawBucket, fromHistogram, rollupAncestors, type RawBucket } from '@civic-voice/core';
+import {
+  dayOf,
+  emptyRawBucket,
+  fromHistogram,
+  rollupAncestors,
+  type RawBucket,
+} from '@civic-voice/core';
 import type {
   AnalyticsStore,
   CrossSliceQuery,
@@ -27,7 +33,9 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
   }
 
   async insertRollups(rows: readonly DailyRollupRow[]): Promise<void> {
-    this.rollups.push(...rows.map((r) => ({ ...r, histogram: [...r.histogram] as DailyRollupRow['histogram'] })));
+    this.rollups.push(
+      ...rows.map((r) => ({ ...r, histogram: [...r.histogram] as DailyRollupRow['histogram'] })),
+    );
   }
 
   async series(
@@ -44,12 +52,19 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
 
     for (const row of this.rollups) {
       if (
-        row.topicId !== topicId || row.regionId !== regionId || row.dim !== dim ||
-        row.bucket !== bucket || !tierSet.has(row.tier) || row.day < from || row.day > to
-      ) continue;
+        row.topicId !== topicId ||
+        row.regionId !== regionId ||
+        row.dim !== dim ||
+        row.bucket !== bucket ||
+        !tierSet.has(row.tier) ||
+        row.day < from ||
+        row.day > to
+      )
+        continue;
       const acc = byDay.get(row.day) ?? { n: 0, histogram: [0, 0, 0, 0, 0] };
       acc.n += row.n;
-      for (let i = 0; i < 5; i += 1) acc.histogram[i] = (acc.histogram[i] as number) + (row.histogram[i] as number);
+      for (let i = 0; i < 5; i += 1)
+        acc.histogram[i] = (acc.histogram[i] as number) + (row.histogram[i] as number);
       byDay.set(row.day, acc);
     }
 
@@ -74,11 +89,17 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
   ): Promise<RawBucket[]> {
     const byBucket = new Map<string, { histogram: number[]; sumIntensity: number }>();
     for (const row of this.rollups) {
-      if (row.topicId !== topicId || row.regionId !== regionId || row.dim !== dim || row.tier !== tier) {
+      if (
+        row.topicId !== topicId ||
+        row.regionId !== regionId ||
+        row.dim !== dim ||
+        row.tier !== tier
+      ) {
         continue;
       }
       const acc = byBucket.get(row.bucket) ?? { histogram: [0, 0, 0, 0, 0], sumIntensity: 0 };
-      for (let i = 0; i < 5; i += 1) acc.histogram[i] = (acc.histogram[i] as number) + (row.histogram[i] as number);
+      for (let i = 0; i < 5; i += 1)
+        acc.histogram[i] = (acc.histogram[i] as number) + (row.histogram[i] as number);
       acc.sumIntensity += row.sumIntensity;
       byBucket.set(row.bucket, acc);
     }
@@ -139,8 +160,13 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
     );
     if (rows.length === 0) {
       return {
-        authorityId, requests: 0, onTimeRate: null, medianResponseDays: null,
-        deemedRefusalRate: null, firstAppealRate: null, appealOverturnRate: null,
+        authorityId,
+        requests: 0,
+        onTimeRate: null,
+        medianResponseDays: null,
+        deemedRefusalRate: null,
+        firstAppealRate: null,
+        appealOverturnRate: null,
       };
     }
     const answered = rows.filter((r) => r.responseDays !== null);
@@ -165,7 +191,9 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
       appealOverturnRate:
         appealed.length === 0
           ? null
-          : Math.round((appealed.filter((r) => r.appealOverturned).length / appealed.length) * 1000) / 1000,
+          : Math.round(
+              (appealed.filter((r) => r.appealOverturned).length / appealed.length) * 1000,
+            ) / 1000,
     };
   }
 

@@ -72,9 +72,7 @@ export class ShardMap {
         }
         const existing = this.byVshard[vshard];
         if (existing !== undefined) {
-          throw new RangeError(
-            `vshard ${vshard} is claimed by both ${existing} and ${cluster.id}`,
-          );
+          throw new RangeError(`vshard ${vshard} is claimed by both ${existing} and ${cluster.id}`);
         }
         this.byVshard[vshard] = cluster.id;
       }

@@ -222,7 +222,8 @@ export function nextAction(input: RtiClockInput, today = todayIso()): RtiNextAct
     return {
       action: 'none',
       deadline: null,
-      explanation: 'File this request with the public authority to start the 30-day statutory clock.',
+      explanation:
+        'File this request with the public authority to start the 30-day statutory clock.',
     };
   }
 

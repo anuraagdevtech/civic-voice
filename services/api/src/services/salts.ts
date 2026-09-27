@@ -23,7 +23,8 @@ export class DerivedTopicSaltProvider implements TopicSaltProvider {
 
   constructor(root: string | Buffer, opts: { maxCached?: number } = {}) {
     this.root = typeof root === 'string' ? Buffer.from(root, 'utf8') : root;
-    if (this.root.length < 16) throw new RangeError('pseudonym salt root must be at least 16 bytes');
+    if (this.root.length < 16)
+      throw new RangeError('pseudonym salt root must be at least 16 bytes');
     this.maxCached = opts.maxCached ?? 50_000;
   }
 

@@ -102,19 +102,17 @@ export function mutationsToDailyRows(mutations: readonly RollupMutation[]): Dail
   const merged = new Map<string, DailyRollupRow>();
   for (const m of mutations) {
     const k = `${m.key.day}|${m.key.topicId}|${m.key.regionId}|${m.key.dim}|${m.key.bucket}|${m.key.tier}`;
-    const row =
-      merged.get(k) ??
-      {
-        day: m.key.day,
-        topicId: m.key.topicId,
-        regionId: m.key.regionId,
-        dim: m.key.dim,
-        bucket: m.key.bucket,
-        tier: m.key.tier,
-        n: 0,
-        sumIntensity: 0,
-        histogram: [0, 0, 0, 0, 0] as [number, number, number, number, number],
-      };
+    const row = merged.get(k) ?? {
+      day: m.key.day,
+      topicId: m.key.topicId,
+      regionId: m.key.regionId,
+      dim: m.key.dim,
+      bucket: m.key.bucket,
+      tier: m.key.tier,
+      n: 0,
+      sumIntensity: 0,
+      histogram: [0, 0, 0, 0, 0] as [number, number, number, number, number],
+    };
     row.n += m.delta;
     row.sumIntensity += m.intensity * m.delta;
     const slot = m.mood + 2;

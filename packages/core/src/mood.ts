@@ -50,7 +50,11 @@ export function mergeBuckets(a: RawBucket, b: RawBucket): RawBucket {
 }
 
 /** Rebuild a bucket's scalars from its histogram — used by reconciliation to repair Redis drift. */
-export function fromHistogram(bucket: string, histogram: MoodHistogram, sumIntensity = 0): RawBucket {
+export function fromHistogram(
+  bucket: string,
+  histogram: MoodHistogram,
+  sumIntensity = 0,
+): RawBucket {
   let n = 0;
   let sumMood = 0;
   for (let i = 0; i < histogram.length; i += 1) {

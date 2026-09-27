@@ -52,14 +52,23 @@ public and cacheable.
 
 At the 170k/s spike, per write the API does:
 
-1. one Redis pipeline (quota + idempotency + counter delta) — ~0.3 ms
-2. one event-log append (batched, acks=all, 3 replicas) — ~2 ms p99
-3. no Postgres write at all (the worker does that, asynchronously)
+1. a read-through profile lookup (region path + bands, ~40 B, cached) — sub-ms on a hit
+2. one Redis pipeline (quota + idempotency) — ~0.3 ms
+3. one event-log append (batched, acks=all, 3 replicas) — ~2 ms p99
+4. no Postgres write at all, and no counter mutation (the worker does both, asynchronously)
 
-Budget **1.5 ms CPU per write**. One core sustains ~660 writes/s; 170k/s needs **~260 cores**,
-≈ 65 pods at 4 cores. At average load that is 3 pods. HPA on in-flight requests plus a
-15-minute pre-warm ahead of scheduled national events (budget, results, verdicts) covers the
-spike; the event log absorbs the rest as queue depth, which is exactly what a log is for.
+Budget **2.0 ms CPU per write**, which is the figure `infra/loadtest` measures rather than the one
+the design hoped for. One core sustains ~500 writes/s; 170k/s needs **~350 cores**, ≈ 88 pods at 4
+cores. At average load that is a single pod.
+
+That number is deliberately pessimistic. The measurement co-locates every dependency on one machine,
+so production should do better — but provisioning against an optimistic figure is the error that
+drops citizens' submissions during a budget speech, while provisioning against a pessimistic one
+only costs money. `pnpm loadtest` re-measures it and fails loudly if the model and reality diverge.
+
+HPA on in-flight requests plus a 15-minute pre-warm ahead of scheduled national events (budget,
+results, verdicts) covers the spike; the event log absorbs the rest as queue depth, which is exactly
+what a log is for.
 
 **Event log sizing.** 250k msg/s × 400 B = 100 MB/s ingress, ×3 replication = 300 MB/s.
 Across 256 partitions that is under 1.2 MB/s/partition — comfortable. Retention 7 days hot

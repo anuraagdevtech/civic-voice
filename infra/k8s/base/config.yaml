@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: civic-config
+data:
+  # ── Write quotas (docs/TRUST.md §3) ──
+  # Deliberately configuration rather than code: the right cooldown is an operational judgement that
+  # will be revised in response to real abuse, and a redeploy is a bad thing to need mid-incident.
+  CIVIC_WRITES_PER_HOUR: '60'
+  CIVIC_WRITE_BURST: '10'
+  CIVIC_TOPIC_COOLDOWN_SECONDS: '600'
+
+  # ── Privacy ──
+  # The gate refuses to go below 25 whatever this says; raising it is the only direction that works.
+  CIVIC_K_ANONYMITY: '25'
+
+  # ── Edge caching ──
+  # The 98% edge hit rate the read-path capacity depends on (docs/SCALING.md §2). Raising max-age
+  # buys headroom at the cost of freshness; stale-while-revalidate is what prevents a stampede when
+  # an entry expires.
+  CIVIC_AGGREGATE_CACHE_SECONDS: '30'
+  CIVIC_AGGREGATE_SWR_SECONDS: '120'
+
+  CIVIC_CORS_ORIGINS: 'https://civicvoice.example'
+  LOG_LEVEL: 'info'
+---
+# Template only — no values. Real secrets come from a secrets manager via External Secrets or CSI,
+# never from a committed manifest.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: civic-secrets
+  annotations:
+    civic.example/managed-by: >-
+      External Secrets Operator. The keys below are the contract; the values live in the cloud
+      secrets manager. CIVIC_PSEUDONYM_SALT_ROOT in particular must be KMS-held and must never be
+      stored beside the analytics data, or per-topic pseudonyms stop protecting anything
+      (docs/PRIVACY.md §2).
+type: Opaque
+stringData:
+  CIVIC_TOKEN_SECRET: ''
+  CIVIC_IDENTITY_PEPPER: ''
+  CIVIC_PSEUDONYM_SALT_ROOT: ''
+  CIVIC_CATALOGUE_URL: ''
+  CIVIC_SHARD_URLS: ''
+  REDIS_URL: ''
+  KAFKA_BROKERS: ''
+  CLICKHOUSE_URL: ''
+  CLICKHOUSE_USER: ''
+  CLICKHOUSE_PASSWORD: ''

@@ -18,7 +18,13 @@ export const URBANITY = ['urban', 'rural'] as const;
 export type Urbanity = (typeof URBANITY)[number];
 
 /** Indexed to per-capita income deciles rather than absolute rupees, so bands survive inflation. */
-export const INCOME_BANDS = ['lowest', 'lower_middle', 'middle', 'upper_middle', 'highest'] as const;
+export const INCOME_BANDS = [
+  'lowest',
+  'lower_middle',
+  'middle',
+  'upper_middle',
+  'highest',
+] as const;
 export type IncomeBand = (typeof INCOME_BANDS)[number];
 
 export const EDUCATION_BANDS = [
@@ -87,9 +93,7 @@ export const DIMENSION_BUCKETS = {
  */
 export const DIMENSION_BUCKETS_BY_INDEX: Record<number, readonly string[]> = {
   [DIMENSION_TOTAL]: ['all'],
-  ...Object.fromEntries(
-    DEMOGRAPHIC_DIMENSIONS.map((dim, i) => [i + 1, DIMENSION_BUCKETS[dim]]),
-  ),
+  ...Object.fromEntries(DEMOGRAPHIC_DIMENSIONS.map((dim, i) => [i + 1, DIMENSION_BUCKETS[dim]])),
 };
 
 /**
@@ -213,7 +217,28 @@ export type AuthorityKind = (typeof AUTHORITY_KINDS)[number];
 
 /** The 22 scheduled languages plus English. */
 export const LOCALES = [
-  'en', 'hi', 'bn', 'mr', 'te', 'ta', 'gu', 'ur', 'kn', 'or', 'ml', 'pa',
-  'as', 'mai', 'sat', 'ks', 'ne', 'sd', 'kok', 'doi', 'mni', 'brx', 'sa',
+  'en',
+  'hi',
+  'bn',
+  'mr',
+  'te',
+  'ta',
+  'gu',
+  'ur',
+  'kn',
+  'or',
+  'ml',
+  'pa',
+  'as',
+  'mai',
+  'sat',
+  'ks',
+  'ne',
+  'sd',
+  'kok',
+  'doi',
+  'mni',
+  'brx',
+  'sa',
 ] as const;
 export type Locale = (typeof LOCALES)[number];

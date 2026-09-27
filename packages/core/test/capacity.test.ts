@@ -78,15 +78,27 @@ describe('capacity model matches the published figures', () => {
     assert.ok(halved.redisUtilisationAtSpike > 0.25);
   });
 
-  test('the write fleet is ~260 cores / 66 pods at spike, single-digit pods at average', () => {
-    approx(c.coresAtSpike, 261, 0.05);
-    assert.equal(c.podsAtSpike, 66);
+  test('the write fleet is ~350 cores / 88 pods at spike, single-digit pods at average', () => {
+    // These figures follow from the MEASURED cost per write (infra/loadtest), not an assumed one.
+    approx(c.coresAtSpike, 348, 0.05);
+    assert.equal(c.podsAtSpike, 88);
     const avgCores = (c.avgWritesPerSecond * ASSUMPTIONS.cpuMsPerWrite) / 1000;
-    assert.ok(Math.ceil(avgCores / ASSUMPTIONS.coresPerPod) <= 3, 'average load should be ~3 pods');
+    assert.ok(
+      Math.ceil(avgCores / ASSUMPTIONS.coresPerPod) <= 3,
+      'average load should be ~1-3 pods',
+    );
+  });
+
+  test('the HPA ceiling leaves room above the modelled spike fleet', () => {
+    // infra/k8s/base/api.yaml caps at 120. An underestimate must degrade, not hit the ceiling.
+    assert.ok(c.podsAtSpike < 120, `modelled ${c.podsAtSpike} pods vs an HPA ceiling of 120`);
   });
 
   test('event-log partitions stay comfortably under 1.2 MB/s each', () => {
-    assert.ok(c.logMBpsPerPartition < 1.2, `${c.logMBpsPerPartition.toFixed(2)} MB/s per partition`);
+    assert.ok(
+      c.logMBpsPerPartition < 1.2,
+      `${c.logMBpsPerPartition.toFixed(2)} MB/s per partition`,
+    );
   });
 
   test('marginals are 240x cheaper than the cross-product', () => {

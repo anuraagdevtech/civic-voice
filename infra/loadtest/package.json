@@ -1,0 +1,13 @@
+{
+  "name": "@civic-voice/loadtest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Measures the per-write service time the capacity model depends on.",
+  "scripts": {
+    "start": "node run.ts"
+  },
+  "dependencies": {
+    "@civic-voice/core": "workspace:*"
+  }
+}

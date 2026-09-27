@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Civic Voice",
+    "slug": "civic-voice",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "in.civicvoice.app" },
+    "android": {
+      "package": "in.civicvoice.app",
+      "adaptiveIcon": { "backgroundColor": "#0b1020" }
+    },
+    "extra": {
+      "apiUrl": "https://api.civicvoice.example"
+    },
+    "plugins": []
+  }
+}

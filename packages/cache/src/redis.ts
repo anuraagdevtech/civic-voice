@@ -247,14 +247,24 @@ export class RedisIdempotencyStore implements IdempotencyStore {
     ttlSeconds = TTL.idempotencySeconds,
   ): Promise<IdempotencyClaim> {
     const k = keys.idempotency(key);
-    const won = await this.redis.set(k, JSON.stringify({ hash: requestHash }), 'EX', ttlSeconds, 'NX');
+    const won = await this.redis.set(
+      k,
+      JSON.stringify({ hash: requestHash }),
+      'EX',
+      ttlSeconds,
+      'NX',
+    );
     if (won === 'OK') return { claimed: true };
 
     const raw = await this.redis.get(k);
     if (raw === null) {
       // The winner's record expired between our SET and GET. Treat it as ours rather than failing.
       const retry = await this.redis.set(
-        k, JSON.stringify({ hash: requestHash }), 'EX', ttlSeconds, 'NX',
+        k,
+        JSON.stringify({ hash: requestHash }),
+        'EX',
+        ttlSeconds,
+        'NX',
       );
       if (retry === 'OK') return { claimed: true };
       return { claimed: false, response: null, conflict: false };
@@ -344,7 +354,12 @@ export class RedisProfileStore implements ProfileStore {
   }
 
   async put(citizenId: string, profile: CitizenProfile): Promise<void> {
-    await this.redis.set(keys.profile(citizenId), JSON.stringify(profile), 'EX', TTL.profileSeconds);
+    await this.redis.set(
+      keys.profile(citizenId),
+      JSON.stringify(profile),
+      'EX',
+      TTL.profileSeconds,
+    );
   }
 
   async invalidate(citizenId: string): Promise<void> {

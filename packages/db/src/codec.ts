@@ -35,7 +35,8 @@ function encoder<T extends string>(vocabulary: readonly T[]) {
     decode(ordinal: number | null | undefined): T | undefined {
       if (ordinal === null || ordinal === undefined) return undefined;
       const value = vocabulary[ordinal];
-      if (value === undefined) throw new RangeError(`ordinal ${ordinal} is out of vocabulary range`);
+      if (value === undefined)
+        throw new RangeError(`ordinal ${ordinal} is out of vocabulary range`);
       return value;
     },
   };
@@ -107,12 +108,26 @@ export const VOCABULARY_FINGERPRINT = {
   income_band: ['lowest', 'lower_middle', 'middle', 'upper_middle', 'highest'],
   education_band: ['none_primary', 'secondary', 'higher_secondary', 'graduate', 'postgraduate'],
   occupation_band: [
-    'agriculture', 'informal_labour', 'salaried_private', 'government',
-    'self_employed', 'student', 'homemaker', 'retired_other',
+    'agriculture',
+    'informal_labour',
+    'salaried_private',
+    'government',
+    'self_employed',
+    'student',
+    'homemaker',
+    'retired_other',
   ],
   reason_code: [
-    'unaware', 'not_consulted', 'poor_implementation', 'corruption_suspected', 'benefits_me',
-    'benefits_community', 'too_costly', 'wrong_priority', 'good_intent_poor_delivery', 'no_reason',
+    'unaware',
+    'not_consulted',
+    'poor_implementation',
+    'corruption_suspected',
+    'benefits_me',
+    'benefits_community',
+    'too_costly',
+    'wrong_priority',
+    'good_intent_poor_delivery',
+    'no_reason',
   ],
 } as const;
 

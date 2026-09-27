@@ -34,7 +34,13 @@ describe('verification tiers', () => {
 describe('anomaly detection', () => {
   test('velocity is judged against the region’s own baseline, not a global constant', () => {
     const big = { regionId: 1, topicId: 1, observed: 900, baselineMedian: 800, windowSeconds: 300 };
-    const small = { regionId: 2, topicId: 1, observed: 900, baselineMedian: 10, windowSeconds: 300 };
+    const small = {
+      regionId: 2,
+      topicId: 1,
+      observed: 900,
+      baselineMedian: 10,
+      windowSeconds: 300,
+    };
     assert.equal(detectVelocityAnomaly(big), null, 'a busy district at its own baseline is normal');
     assert.equal(detectVelocityAnomaly(small)?.severity, 'quarantine');
   });

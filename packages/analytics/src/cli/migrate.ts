@@ -51,7 +51,13 @@ function splitStatements(sql: string): string[] {
   statements.push(current);
 
   return statements
-    .map((s) => s.split('\n').filter((line) => !line.trim().startsWith('--')).join('\n').trim())
+    .map((s) =>
+      s
+        .split('\n')
+        .filter((line) => !line.trim().startsWith('--'))
+        .join('\n')
+        .trim(),
+    )
     .filter((s) => s.length > 0);
 }
 

@@ -20,7 +20,12 @@ import {
   createMemoryAnalyticsStore,
   type AnalyticsStore,
 } from '@civic-voice/analytics';
-import { createKafkaEventBus, createMemoryEventBus, type EventBus } from '@civic-voice/stream';
+import {
+  createKafkaEventBus,
+  createMemoryEventBus,
+  eventTopics,
+  type EventBus,
+} from '@civic-voice/stream';
 import { EVENT_TOPICS } from '@civic-voice/contracts';
 import { createLogger, createMetrics } from '@civic-voice/observability';
 import { Aggregator } from './pipelines/aggregator.ts';
@@ -57,8 +62,12 @@ if (useMemory) {
   repos = createPgRepositories(router);
   cache = createRedisCacheTier();
   analytics = createClickHouseAnalyticsStore();
-  bus = createKafkaEventBus({ logger, clientId: 'civic-worker' });
-  await Promise.all([repos.ready(), cache.ready(), analytics.ready(), bus.producer.ready()]);
+  const kafka = createKafkaEventBus({ logger, clientId: 'civic-worker' });
+  bus = kafka;
+  await Promise.all([repos.ready(), cache.ready(), analytics.ready(), kafka.producer.ready()]);
+  // Before subscribing. A consumer subscribing to a missing topic makes the broker auto-create it
+  // with one partition, which would silently cap this pipeline's parallelism at a single consumer.
+  await kafka.ensureTopics(eventTopics());
 }
 
 const aggregator = new Aggregator({ repos, cache, analytics, bus, metrics, logger });

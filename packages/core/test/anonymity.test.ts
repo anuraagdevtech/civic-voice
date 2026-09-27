@@ -63,7 +63,11 @@ describe('k-anonymity gate', () => {
   test('a bucket at or above k is never withheld for being below k', () => {
     // It may still be withheld as a *complement* — that is a different, disclosed reason, and the
     // distinction matters because it is what tells a reader whether their cohort was too small.
-    const buckets = [bucket('at_k', DEFAULT_K), bucket('below_k', DEFAULT_K - 1), bucket('big', 500)];
+    const buckets = [
+      bucket('at_k', DEFAULT_K),
+      bucket('below_k', DEFAULT_K - 1),
+      bucket('big', 500),
+    ];
     const { buckets: out } = applyAnonymityGate(totalOf(buckets), buckets);
     const atK = out.find((b) => b.bucket === 'at_k');
     assert.notEqual(atK?.suppression_reason, 'below_k');

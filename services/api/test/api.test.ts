@@ -21,27 +21,90 @@ describe('api', () => {
   let repos: MemoryRepositories;
   let bus: MemoryEventBus;
 
-  const REGION = { id: 1052, parent_id: 105, kind: 'constituency', path: [1, 10, 105, 1052], name: 'Test AC', population: 500_000, codes: {} };
+  const REGION = {
+    id: 1052,
+    parent_id: 105,
+    kind: 'constituency',
+    path: [1, 10, 105, 1052],
+    name: 'Test AC',
+    population: 500_000,
+    codes: {},
+  };
   const TOPIC = {
-    id: 7, kind: 'policy', status: 'active', jurisdiction_region_id: 1,
-    authority_id: 1, scheme_id: null, title: 'A national policy', summary: null,
-    effective_from: '2026-01-01', source_refs: [],
+    id: 7,
+    kind: 'policy',
+    status: 'active',
+    jurisdiction_region_id: 1,
+    authority_id: 1,
+    scheme_id: null,
+    title: 'A national policy',
+    summary: null,
+    effective_from: '2026-01-01',
+    source_refs: [],
   };
 
   before(async () => {
     repos = createMemoryRepositories();
-    repos.catalogue.putRegion({ id: 1, parent_id: null, kind: 'country', path: [1], name: 'India', population: 1_400_000_000, codes: {} });
-    repos.catalogue.putRegion({ id: 10, parent_id: 1, kind: 'state', path: [1, 10], name: 'Test State', population: 100_000_000, codes: {} });
-    repos.catalogue.putRegion({ id: 105, parent_id: 10, kind: 'district', path: [1, 10, 105], name: 'Test District', population: 4_000_000, codes: {} });
+    repos.catalogue.putRegion({
+      id: 1,
+      parent_id: null,
+      kind: 'country',
+      path: [1],
+      name: 'India',
+      population: 1_400_000_000,
+      codes: {},
+    });
+    repos.catalogue.putRegion({
+      id: 10,
+      parent_id: 1,
+      kind: 'state',
+      path: [1, 10],
+      name: 'Test State',
+      population: 100_000_000,
+      codes: {},
+    });
+    repos.catalogue.putRegion({
+      id: 105,
+      parent_id: 10,
+      kind: 'district',
+      path: [1, 10, 105],
+      name: 'Test District',
+      population: 4_000_000,
+      codes: {},
+    });
     repos.catalogue.putRegion(REGION);
-    repos.catalogue.putRegion({ id: 2000, parent_id: 1, kind: 'state', path: [1, 2000], name: 'Other State', population: 30_000_000, codes: {} });
+    repos.catalogue.putRegion({
+      id: 2000,
+      parent_id: 1,
+      kind: 'state',
+      path: [1, 2000],
+      name: 'Other State',
+      population: 30_000_000,
+      codes: {},
+    });
     repos.catalogue.putTopic(TOPIC);
-    repos.catalogue.putTopic({ ...TOPIC, id: 8, jurisdiction_region_id: 2000, title: 'Another state’s policy' });
-    repos.catalogue.putAuthority({ id: 1, kind: 'union_ministry', name: 'Ministry of Test', region_id: 1, pio_contact: 'pio@test.gov.in', faa_contact: 'faa@test.gov.in' });
+    repos.catalogue.putTopic({
+      ...TOPIC,
+      id: 8,
+      jurisdiction_region_id: 2000,
+      title: 'Another state’s policy',
+    });
+    repos.catalogue.putAuthority({
+      id: 1,
+      kind: 'union_ministry',
+      name: 'Ministry of Test',
+      region_id: 1,
+      pio_contact: 'pio@test.gov.in',
+      faa_contact: 'faa@test.gov.in',
+    });
 
     bus = createMemoryEventBus({ autoDeliver: false });
     app = await buildApp({
-      config: loadApiConfig({ ...process.env, CIVIC_TOKEN_SECRET: 't'.repeat(40), CIVIC_TOPIC_COOLDOWN_SECONDS: '600' }),
+      config: loadApiConfig({
+        ...process.env,
+        CIVIC_TOKEN_SECRET: 't'.repeat(40),
+        CIVIC_TOPIC_COOLDOWN_SECONDS: '600',
+      }),
       repos,
       cache: createMemoryCacheTier(),
       bus,
@@ -56,15 +119,20 @@ describe('api', () => {
 
   const register = async (over: Record<string, unknown> = {}) => {
     const res = await app.inject({
-      method: 'POST', url: '/v1/citizens',
+      method: 'POST',
+      url: '/v1/citizens',
       payload: { region_id: REGION.id, locale: 'hi', demographics: { age_band: '25-34' }, ...over },
     });
-    return { status: res.statusCode, body: res.json() as { access_token: string; citizen: { id: string } } };
+    return {
+      status: res.statusCode,
+      body: res.json() as { access_token: string; citizen: { id: string } },
+    };
   };
 
   const submit = (token: string, payload: Record<string, unknown>, idem = `k-${Math.random()}`) =>
     app.inject({
-      method: 'POST', url: '/v1/sentiment',
+      method: 'POST',
+      url: '/v1/sentiment',
       headers: { authorization: `Bearer ${token}`, 'idempotency-key': idem },
       payload,
     });
@@ -103,19 +171,26 @@ describe('api', () => {
 
     test('a registration response must not be cached by a shared cache', async () => {
       const res = await app.inject({
-        method: 'POST', url: '/v1/citizens', payload: { region_id: REGION.id },
+        method: 'POST',
+        url: '/v1/citizens',
+        payload: { region_id: REGION.id },
       });
       assert.match(res.headers['cache-control'] as string, /private|no-store/);
     });
 
     test('an unknown region is rejected', async () => {
-      const res = await app.inject({ method: 'POST', url: '/v1/citizens', payload: { region_id: 999_999 } });
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/citizens',
+        payload: { region_id: 999_999 },
+      });
       assert.equal(res.statusCode, 404);
     });
 
     test('a bad demographic band is rejected with the offending path', async () => {
       const res = await app.inject({
-        method: 'POST', url: '/v1/citizens',
+        method: 'POST',
+        url: '/v1/citizens',
         payload: { region_id: REGION.id, demographics: { age_band: 'toddler' } },
       });
       assert.equal(res.statusCode, 400);
@@ -126,7 +201,11 @@ describe('api', () => {
 
   describe('authentication', () => {
     test('a write without a token is rejected', async () => {
-      const res = await app.inject({ method: 'POST', url: '/v1/sentiment', payload: { topic_id: 7, mood: 0 } });
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/sentiment',
+        payload: { topic_id: 7, mood: 0 },
+      });
       assert.equal(res.statusCode, 401);
     });
 
@@ -140,7 +219,8 @@ describe('api', () => {
     test('a token without the Bearer scheme is rejected', async () => {
       const { body } = await register();
       const res = await app.inject({
-        method: 'POST', url: '/v1/sentiment',
+        method: 'POST',
+        url: '/v1/sentiment',
         headers: { authorization: body.access_token, 'idempotency-key': 'abcdefgh' },
         payload: { topic_id: 7, mood: 0 },
       });
@@ -182,7 +262,8 @@ describe('api', () => {
     test('a write requires an idempotency key', async () => {
       const { body } = await register();
       const res = await app.inject({
-        method: 'POST', url: '/v1/sentiment',
+        method: 'POST',
+        url: '/v1/sentiment',
         headers: { authorization: `Bearer ${body.access_token}` },
         payload: { topic_id: 7, mood: 0 },
       });
@@ -192,7 +273,10 @@ describe('api', () => {
 
     test('an unknown topic is rejected', async () => {
       const { body } = await register();
-      assert.equal((await submit(body.access_token, { topic_id: 999_999, mood: 0 })).statusCode, 404);
+      assert.equal(
+        (await submit(body.access_token, { topic_id: 999_999, mood: 0 })).statusCode,
+        404,
+      );
     });
 
     test('a topic outside the citizen’s jurisdiction is refused', async () => {
@@ -220,7 +304,11 @@ describe('api', () => {
       assert.equal(second.statusCode, 200);
       assert.equal(second.json().replayed, true);
       assert.equal(second.json().event_id, first.json().event_id);
-      assert.equal(bus.published(EVENT_TOPICS.SENTIMENT).length, before, 'nothing new was published');
+      assert.equal(
+        bus.published(EVENT_TOPICS.SENTIMENT).length,
+        before,
+        'nothing new was published',
+      );
     });
 
     test('reusing a key for a different body is a conflict', async () => {
@@ -279,14 +367,18 @@ describe('api', () => {
     });
 
     test('a dimension read enumerates every bucket, so absent reads as zero', async () => {
-      const res = await app.inject({ method: 'GET', url: '/v1/topics/7/mood?dimension=age_band&tier=0' });
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/topics/7/mood?dimension=age_band&tier=0',
+      });
       assert.equal(res.json().buckets.length, 6);
     });
 
     test('the citizen’s own opinions are private and uncacheable', async () => {
       const { body } = await register();
       const res = await app.inject({
-        method: 'GET', url: '/v1/me/sentiment',
+        method: 'GET',
+        url: '/v1/me/sentiment',
         headers: { authorization: `Bearer ${body.access_token}` },
       });
       assert.equal(res.statusCode, 200);
@@ -298,7 +390,8 @@ describe('api', () => {
     test('a profile update invalidates the cached bands', async () => {
       const { body } = await register();
       const res = await app.inject({
-        method: 'PATCH', url: '/v1/me',
+        method: 'PATCH',
+        url: '/v1/me',
         headers: { authorization: `Bearer ${body.access_token}` },
         payload: { demographics: { age_band: '65+', gender: 'other' } },
       });
@@ -312,8 +405,12 @@ describe('api', () => {
       // header the citizen did not choose is not acceptable.
       const { body } = await register();
       const res = await app.inject({
-        method: 'DELETE', url: '/v1/me',
-        headers: { authorization: `Bearer ${body.access_token}`, 'content-type': 'application/json' },
+        method: 'DELETE',
+        url: '/v1/me',
+        headers: {
+          authorization: `Bearer ${body.access_token}`,
+          'content-type': 'application/json',
+        },
       });
       assert.equal(res.statusCode, 200, res.body);
       assert.equal(res.json().erased, true);
@@ -322,7 +419,8 @@ describe('api', () => {
     test('an erased citizen cannot write', async () => {
       const { body } = await register();
       await app.inject({
-        method: 'DELETE', url: '/v1/me',
+        method: 'DELETE',
+        url: '/v1/me',
         headers: { authorization: `Bearer ${body.access_token}` },
       });
       const res = await submit(body.access_token, { topic_id: 7, mood: 1 });
@@ -332,8 +430,14 @@ describe('api', () => {
     test('erasing twice is a 404, not a silent success', async () => {
       const { body } = await register();
       const headers = { authorization: `Bearer ${body.access_token}` };
-      assert.equal((await app.inject({ method: 'DELETE', url: '/v1/me', headers })).statusCode, 200);
-      assert.equal((await app.inject({ method: 'DELETE', url: '/v1/me', headers })).statusCode, 404);
+      assert.equal(
+        (await app.inject({ method: 'DELETE', url: '/v1/me', headers })).statusCode,
+        200,
+      );
+      assert.equal(
+        (await app.inject({ method: 'DELETE', url: '/v1/me', headers })).statusCode,
+        404,
+      );
     });
   });
 
@@ -341,9 +445,14 @@ describe('api', () => {
     test('files a request and returns its statutory deadlines', async () => {
       const { body } = await register();
       const res = await app.inject({
-        method: 'POST', url: '/v1/rti',
+        method: 'POST',
+        url: '/v1/rti',
         headers: { authorization: `Bearer ${body.access_token}` },
-        payload: { authority_id: 1, subject: 'Details of tap connections completed this year', filed_at: '2026-01-01' },
+        payload: {
+          authority_id: 1,
+          subject: 'Details of tap connections completed this year',
+          filed_at: '2026-01-01',
+        },
       });
       assert.equal(res.statusCode, 201, res.body);
       const view = res.json();
@@ -354,7 +463,8 @@ describe('api', () => {
     test('an unknown authority is rejected', async () => {
       const { body } = await register();
       const res = await app.inject({
-        method: 'POST', url: '/v1/rti',
+        method: 'POST',
+        url: '/v1/rti',
         headers: { authorization: `Bearer ${body.access_token}` },
         payload: { authority_id: 999, subject: 'A sufficiently long subject line for validation' },
       });
@@ -364,7 +474,8 @@ describe('api', () => {
     test('a too-short subject is rejected', async () => {
       const { body } = await register();
       const res = await app.inject({
-        method: 'POST', url: '/v1/rti',
+        method: 'POST',
+        url: '/v1/rti',
         headers: { authorization: `Bearer ${body.access_token}` },
         payload: { authority_id: 1, subject: 'short' },
       });
@@ -374,12 +485,14 @@ describe('api', () => {
     test('an illegal transition is refused with the states named', async () => {
       const { body } = await register();
       const created = await app.inject({
-        method: 'POST', url: '/v1/rti',
+        method: 'POST',
+        url: '/v1/rti',
         headers: { authorization: `Bearer ${body.access_token}` },
         payload: { authority_id: 1, subject: 'A sufficiently long subject line for validation' },
       });
       const res = await app.inject({
-        method: 'POST', url: `/v1/rti/${created.json().request.id}/transitions`,
+        method: 'POST',
+        url: `/v1/rti/${created.json().request.id}/transitions`,
         headers: { authorization: `Bearer ${body.access_token}` },
         payload: { to: 'second_appeal' },
       });
@@ -391,12 +504,14 @@ describe('api', () => {
       const a = await register();
       const b = await register();
       const created = await app.inject({
-        method: 'POST', url: '/v1/rti',
+        method: 'POST',
+        url: '/v1/rti',
         headers: { authorization: `Bearer ${a.body.access_token}` },
         payload: { authority_id: 1, subject: 'A sufficiently long subject line for validation' },
       });
       const res = await app.inject({
-        method: 'GET', url: `/v1/rti/${created.json().request.id}`,
+        method: 'GET',
+        url: `/v1/rti/${created.json().request.id}`,
         headers: { authorization: `Bearer ${b.body.access_token}` },
       });
       assert.equal(res.statusCode, 404);
@@ -411,14 +526,17 @@ describe('api', () => {
 
     test('an inbound request id is preserved, so a trace spans the edge and the origin', async () => {
       const res = await app.inject({
-        method: 'GET', url: '/healthz', headers: { 'x-request-id': 'edge-abc-123' },
+        method: 'GET',
+        url: '/healthz',
+        headers: { 'x-request-id': 'edge-abc-123' },
       });
       assert.equal(res.headers['x-request-id'], 'edge-abc-123');
     });
 
     test('malformed JSON is a 400, not a 500', async () => {
       const res = await app.inject({
-        method: 'POST', url: '/v1/citizens',
+        method: 'POST',
+        url: '/v1/citizens',
         headers: { 'content-type': 'application/json' },
         payload: '{"region_id": ',
       });
@@ -428,7 +546,8 @@ describe('api', () => {
 
     test('an oversized body is rejected', async () => {
       const res = await app.inject({
-        method: 'POST', url: '/v1/citizens',
+        method: 'POST',
+        url: '/v1/citizens',
         headers: { 'content-type': 'application/json' },
         payload: JSON.stringify({ region_id: 1052, pad: 'x'.repeat(100_000) }),
       });

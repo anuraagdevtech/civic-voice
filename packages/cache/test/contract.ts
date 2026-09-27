@@ -48,9 +48,14 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
       test('derives n and mean mood from the histogram it stores', async () => {
         const tier = await makeTier();
         try {
-          await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(1), mood: -1, intensity: 4 }))));
+          await tier.counters.apply(
+            incrementsFrom(mutationsFor(event({ topic_id: T(1), mood: -1, intensity: 4 }))),
+          );
           const slice = await tier.counters.readSlice({
-            topicId: T(1), regionId: 105, dim: 0, tiers: [2],
+            topicId: T(1),
+            regionId: 105,
+            dim: 0,
+            tiers: [2],
           });
           assert.equal(slice.total.n, 1);
           assert.equal(slice.total.sumMood, -1);
@@ -65,11 +70,16 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         const tier = await makeTier();
         try {
           for (let i = 0; i < 5; i += 1) {
-            await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(2), mood: 2, intensity: 5 }))));
+            await tier.counters.apply(
+              incrementsFrom(mutationsFor(event({ topic_id: T(2), mood: 2, intensity: 5 }))),
+            );
           }
           for (const regionId of [1, 10, 105, 1052]) {
             const slice = await tier.counters.readSlice({
-              topicId: T(2), regionId, dim: 0, tiers: [2],
+              topicId: T(2),
+              regionId,
+              dim: 0,
+              tiers: [2],
             });
             assert.equal(slice.total.n, 5, `region ${regionId}`);
             assert.equal(slice.total.sumMood, 10);
@@ -82,7 +92,9 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
       test('a changed opinion does not inflate the cohort', async () => {
         const tier = await makeTier();
         try {
-          await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(3), mood: -2, intensity: 5 }))));
+          await tier.counters.apply(
+            incrementsFrom(mutationsFor(event({ topic_id: T(3), mood: -2, intensity: 5 }))),
+          );
           await tier.counters.apply(
             incrementsFrom(
               mutationsFor(
@@ -96,7 +108,10 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
             ),
           );
           const slice = await tier.counters.readSlice({
-            topicId: T(3), regionId: 105, dim: 0, tiers: [2],
+            topicId: T(3),
+            regionId: 105,
+            dim: 0,
+            tiers: [2],
           });
           assert.equal(slice.total.n, 1, 'still one person');
           assert.deepEqual(slice.total.histogram, [0, 0, 0, 0, 1], 'moved to satisfied');
@@ -109,17 +124,29 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
       test('sums the requested tiers and only those', async () => {
         const tier = await makeTier();
         try {
-          await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(4), verification_tier: 0 }))));
-          await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(4), verification_tier: 2 }))));
-          await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(4), verification_tier: 3 }))));
+          await tier.counters.apply(
+            incrementsFrom(mutationsFor(event({ topic_id: T(4), verification_tier: 0 }))),
+          );
+          await tier.counters.apply(
+            incrementsFrom(mutationsFor(event({ topic_id: T(4), verification_tier: 2 }))),
+          );
+          await tier.counters.apply(
+            incrementsFrom(mutationsFor(event({ topic_id: T(4), verification_tier: 3 }))),
+          );
 
           const publicView = await tier.counters.readSlice({
-            topicId: T(4), regionId: 105, dim: 0, tiers: [2, 3],
+            topicId: T(4),
+            regionId: 105,
+            dim: 0,
+            tiers: [2, 3],
           });
           assert.equal(publicView.total.n, 2, 'default public view is T2+');
 
           const everyone = await tier.counters.readSlice({
-            topicId: T(4), regionId: 105, dim: 0, tiers: [0, 1, 2, 3],
+            topicId: T(4),
+            regionId: 105,
+            dim: 0,
+            tiers: [0, 1, 2, 3],
           });
           assert.equal(everyone.total.n, 3);
         } finally {
@@ -132,24 +159,43 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         try {
           await tier.counters.apply(
             incrementsFrom(
-              mutationsFor(event({ topic_id: T(5), demographics: { age_band: '25-34', gender: 'female' } })),
+              mutationsFor(
+                event({ topic_id: T(5), demographics: { age_band: '25-34', gender: 'female' } }),
+              ),
             ),
           );
           await tier.counters.apply(
             incrementsFrom(
-              mutationsFor(event({ topic_id: T(5), demographics: { age_band: '65+', gender: 'female' } })),
+              mutationsFor(
+                event({ topic_id: T(5), demographics: { age_band: '65+', gender: 'female' } }),
+              ),
             ),
           );
 
-          const age = await tier.counters.readSlice({ topicId: T(5), regionId: 105, dim: 1, tiers: [2] });
+          const age = await tier.counters.readSlice({
+            topicId: T(5),
+            regionId: 105,
+            dim: 1,
+            tiers: [2],
+          });
           assert.equal(age.buckets.length, 2);
           assert.equal(age.buckets.find((b) => b.bucket === '25-34')?.n, 1);
           assert.equal(age.buckets.find((b) => b.bucket === '65+')?.n, 1);
 
-          const gender = await tier.counters.readSlice({ topicId: T(5), regionId: 105, dim: 2, tiers: [2] });
+          const gender = await tier.counters.readSlice({
+            topicId: T(5),
+            regionId: 105,
+            dim: 2,
+            tiers: [2],
+          });
           assert.equal(gender.buckets.find((b) => b.bucket === 'female')?.n, 2);
 
-          const total = await tier.counters.readSlice({ topicId: T(5), regionId: 105, dim: 0, tiers: [2] });
+          const total = await tier.counters.readSlice({
+            topicId: T(5),
+            regionId: 105,
+            dim: 0,
+            tiers: [2],
+          });
           assert.equal(total.total.n, 2, 'marginals must agree with the total');
           assert.equal(age.total.n, total.total.n);
         } finally {
@@ -161,7 +207,10 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         const tier = await makeTier();
         try {
           const slice = await tier.counters.readSlice({
-            topicId: T(99), regionId: 1, dim: 0, tiers: [2],
+            topicId: T(99),
+            regionId: 1,
+            dim: 0,
+            tiers: [2],
           });
           assert.equal(slice.total.n, 0);
           assert.deepEqual(slice.buckets, []);
@@ -175,7 +224,10 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         try {
           await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(6) }))));
           const slice = await tier.counters.readSlice({
-            topicId: T(6), regionId: 105, dim: 0, tiers: [2],
+            topicId: T(6),
+            regionId: 105,
+            dim: 0,
+            tiers: [2],
           });
           assert.ok(slice.stalenessSeconds >= 0 && slice.stalenessSeconds < 5);
         } finally {
@@ -186,12 +238,23 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
       test('overwriteSlice replaces rather than merges, so reconciliation can repair drift', async () => {
         const tier = await makeTier();
         try {
-          await tier.counters.apply(incrementsFrom(mutationsFor(event({ topic_id: T(7), mood: -2 }))));
+          await tier.counters.apply(
+            incrementsFrom(mutationsFor(event({ topic_id: T(7), mood: -2 }))),
+          );
           await tier.counters.overwriteSlice(T(7), 105, 0, 2, [
-            { bucket: 'all', n: 500, sumMood: 250, sumIntensity: 1500, histogram: [0, 0, 250, 250, 0] },
+            {
+              bucket: 'all',
+              n: 500,
+              sumMood: 250,
+              sumIntensity: 1500,
+              histogram: [0, 0, 250, 250, 0],
+            },
           ]);
           const slice = await tier.counters.readSlice({
-            topicId: T(7), regionId: 105, dim: 0, tiers: [2],
+            topicId: T(7),
+            regionId: 105,
+            dim: 0,
+            tiers: [2],
           });
           assert.equal(slice.total.n, 500, 'drifted value must be gone, not added to');
           assert.deepEqual(slice.total.histogram, [0, 0, 250, 250, 0]);
@@ -259,7 +322,8 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         try {
           const a = `citizen-a-${Math.random()}`;
           const b = `citizen-b-${Math.random()}`;
-          for (let topicId = 1; topicId <= 20; topicId += 1) await tier.quotas.checkAndConsume(a, topicId);
+          for (let topicId = 1; topicId <= 20; topicId += 1)
+            await tier.quotas.checkAndConsume(a, topicId);
           assert.equal((await tier.quotas.checkAndConsume(b, 1)).allowed, true);
         } finally {
           await tier.close();
@@ -338,7 +402,9 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         try {
           const id = `citizen-${Math.random()}`;
           const opinion = {
-            mood: 2 as const, intensity: 4, reason_code: 'benefits_me' as const,
+            mood: 2 as const,
+            intensity: 4,
+            reason_code: 'benefits_me' as const,
             updated_at: new Date().toISOString(),
           };
           await tier.pending.put(id, 77, opinion);
@@ -362,7 +428,9 @@ export function runCacheTierContract(name: string, make: () => Promise<CacheTier
         try {
           const id = `citizen-${Math.random()}`;
           const opinion = {
-            mood: 0 as const, intensity: 3, reason_code: 'no_reason' as const,
+            mood: 0 as const,
+            intensity: 3,
+            reason_code: 'no_reason' as const,
             updated_at: new Date().toISOString(),
           };
           await tier.pending.put(id, 1, opinion);

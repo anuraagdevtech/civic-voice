@@ -5,7 +5,9 @@
   "description": "Civic Voice — public sentiment, RTI tracking and tax-utilisation transparency at national scale.",
   "license": "MIT",
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=22.18.0" },
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test --test-reporter=spec \"packages/*/test/**/*.test.ts\" \"services/*/test/**/*.test.ts\"",
@@ -19,10 +21,12 @@
     "dev:api": "node --watch services/api/src/main.ts",
     "dev:worker": "node --watch services/worker/src/main.ts",
     "dev:web": "pnpm --filter @civic-voice/web dev",
-    "loadtest": "node infra/loadtest/run.ts"
+    "loadtest": "node infra/loadtest/run.ts",
+    "e2e": "node infra/e2e/run.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.10",
+    "playwright": "^1.63.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3"
   }

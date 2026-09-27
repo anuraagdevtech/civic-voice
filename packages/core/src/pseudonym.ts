@@ -44,9 +44,12 @@ export function blindIndex(pepper: Buffer, normalisedIdentifier: string): string
  */
 export function normaliseIndianMobile(raw: string): string {
   const digits = raw.replace(/\D/g, '');
-  const local = digits.startsWith('91') && digits.length === 12 ? digits.slice(2)
-    : digits.startsWith('0') && digits.length === 11 ? digits.slice(1)
-    : digits;
+  const local =
+    digits.startsWith('91') && digits.length === 12
+      ? digits.slice(2)
+      : digits.startsWith('0') && digits.length === 11
+        ? digits.slice(1)
+        : digits;
   if (!/^[6-9]\d{9}$/.test(local)) {
     throw new RangeError('not a valid Indian mobile number');
   }

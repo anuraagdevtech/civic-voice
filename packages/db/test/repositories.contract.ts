@@ -16,7 +16,11 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
     region_id: 1052,
     region_path: [1, 10, 105, 1052],
     locale: 'hi' as const,
-    demographics: { age_band: '25-34' as const, gender: 'female' as const, urbanity: 'rural' as const },
+    demographics: {
+      age_band: '25-34' as const,
+      gender: 'female' as const,
+      urbanity: 'rural' as const,
+    },
   });
 
   describe(`repository contract: ${name}`, () => {
@@ -118,7 +122,10 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
         try {
           const input = newCitizen();
           await repos.citizens.create(input);
-          assert.equal((await repos.citizens.setVerificationTier(input.id, 2))?.verification_tier, 2);
+          assert.equal(
+            (await repos.citizens.setVerificationTier(input.id, 2))?.verification_tier,
+            2,
+          );
         } finally {
           await repos.close();
         }
@@ -163,7 +170,11 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           const citizen = newCitizen();
           await repos.citizens.create(citizen);
           const result = await repos.sentiment.upsert(citizen.id, {
-            topic_id: 1, mood: -1, intensity: 4, reason_code: 'poor_implementation', event_id: uuidv7(),
+            topic_id: 1,
+            mood: -1,
+            intensity: 4,
+            reason_code: 'poor_implementation',
+            event_id: uuidv7(),
           });
           assert.equal(result.applied, true);
           assert.equal(result.previous, null);
@@ -178,10 +189,18 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           const citizen = newCitizen();
           await repos.citizens.create(citizen);
           await repos.sentiment.upsert(citizen.id, {
-            topic_id: 1, mood: -2, intensity: 5, reason_code: 'corruption_suspected', event_id: uuidv7(),
+            topic_id: 1,
+            mood: -2,
+            intensity: 5,
+            reason_code: 'corruption_suspected',
+            event_id: uuidv7(),
           });
           const changed = await repos.sentiment.upsert(citizen.id, {
-            topic_id: 1, mood: 2, intensity: 3, reason_code: 'benefits_me', event_id: uuidv7(),
+            topic_id: 1,
+            mood: 2,
+            intensity: 3,
+            reason_code: 'benefits_me',
+            event_id: uuidv7(),
           });
           assert.equal(changed.applied, true);
           assert.equal(changed.previous?.mood, -2, 'the OLD mood, for the −1');
@@ -203,7 +222,11 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           await repos.citizens.create(citizen);
           const eventId = uuidv7();
           const row = {
-            topic_id: 1, mood: 1 as const, intensity: 3, reason_code: 'no_reason' as const, event_id: eventId,
+            topic_id: 1,
+            mood: 1 as const,
+            intensity: 3,
+            reason_code: 'no_reason' as const,
+            event_id: eventId,
           };
           const first = await repos.sentiment.upsert(citizen.id, row);
           const redelivered = await repos.sentiment.upsert(citizen.id, row);
@@ -223,7 +246,11 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           await repos.citizens.create(citizen);
           for (const topicId of [1, 2, 3]) {
             await repos.sentiment.upsert(citizen.id, {
-              topic_id: topicId, mood: 0, intensity: 3, reason_code: 'no_reason', event_id: uuidv7(),
+              topic_id: topicId,
+              mood: 0,
+              intensity: 3,
+              reason_code: 'no_reason',
+              event_id: uuidv7(),
             });
           }
           const all = await repos.sentiment.listCurrent(citizen.id);
@@ -241,7 +268,11 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           await repos.citizens.create(citizen);
           for (const topicId of [1, 2, 3]) {
             await repos.sentiment.upsert(citizen.id, {
-              topic_id: topicId, mood: 0, intensity: 3, reason_code: 'no_reason', event_id: uuidv7(),
+              topic_id: topicId,
+              mood: 0,
+              intensity: 3,
+              reason_code: 'no_reason',
+              event_id: uuidv7(),
             });
           }
           const some = await repos.sentiment.listCurrent(citizen.id, { topicIds: [1, 3] });
@@ -259,7 +290,11 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           await repos.citizens.create(a);
           await repos.citizens.create(b);
           await repos.sentiment.upsert(a.id, {
-            topic_id: 9, mood: 2, intensity: 5, reason_code: 'benefits_me', event_id: uuidv7(),
+            topic_id: 9,
+            mood: 2,
+            intensity: 5,
+            reason_code: 'benefits_me',
+            event_id: uuidv7(),
           });
           assert.equal(await repos.sentiment.getCurrent(b.id, 9), null);
           assert.deepEqual(await repos.sentiment.listCurrent(b.id), []);
@@ -274,7 +309,11 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           const citizen = newCitizen();
           await repos.citizens.create(citizen);
           await repos.sentiment.upsert(citizen.id, {
-            topic_id: 1, mood: 1, intensity: 3, reason_code: 'no_reason', event_id: uuidv7(),
+            topic_id: 1,
+            mood: 1,
+            intensity: 3,
+            reason_code: 'no_reason',
+            event_id: uuidv7(),
           });
           await repos.citizens.erase(citizen.id);
           assert.deepEqual(await repos.sentiment.listCurrent(citizen.id), []);
@@ -323,7 +362,12 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           const citizen = newCitizen();
           await repos.citizens.create(citizen);
           const created = await repos.rti.create(newRti(citizen.id, { filed_at: '2026-01-01' }));
-          const responded = await repos.rti.transition(citizen.id, created.id, 'responded', '2026-01-28');
+          const responded = await repos.rti.transition(
+            citizen.id,
+            created.id,
+            'responded',
+            '2026-01-28',
+          );
           assert.equal(responded?.state, 'responded');
           assert.equal(responded?.responded_at, '2026-01-28');
           assert.equal(responded?.filed_at, '2026-01-01', 'earlier dates are preserved');
@@ -354,8 +398,15 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
           await repos.citizens.create(b);
           const created = await repos.rti.create(newRti(a.id, { filed_at: '2026-01-01' }));
 
-          assert.equal(await repos.rti.findById(b.id, created.id), null, 'guessing an id must fail');
-          assert.equal(await repos.rti.transition(b.id, created.id, 'responded', '2026-02-01'), null);
+          assert.equal(
+            await repos.rti.findById(b.id, created.id),
+            null,
+            'guessing an id must fail',
+          );
+          assert.equal(
+            await repos.rti.transition(b.id, created.id, 'responded', '2026-02-01'),
+            null,
+          );
         } finally {
           await repos.close();
         }
@@ -381,8 +432,12 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
         try {
           const topicId = 700_000 + Math.floor(Math.random() * 100_000);
           await repos.catalogue.addQuarantine({
-            topic_id: topicId, region_id: 105, dim: 1, bucket: '25-34',
-            reason: 'velocity', detail: '31x baseline',
+            topic_id: topicId,
+            region_id: 105,
+            dim: 1,
+            bucket: '25-34',
+            reason: 'velocity',
+            detail: '31x baseline',
           });
           const found = await repos.catalogue.quarantinedBuckets(topicId, 105, 1);
           assert.equal(found.length, 1);
@@ -397,7 +452,13 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
         const repos = await open();
         try {
           const topicId = 800_000 + Math.floor(Math.random() * 100_000);
-          const row = { topic_id: topicId, region_id: 105, dim: 1, bucket: '25-34', reason: 'velocity' };
+          const row = {
+            topic_id: topicId,
+            region_id: 105,
+            dim: 1,
+            bucket: '25-34',
+            reason: 'velocity',
+          };
           await repos.catalogue.addQuarantine(row);
           await repos.catalogue.addQuarantine({ ...row, reason: 'homogeneity' });
           const found = await repos.catalogue.quarantinedBuckets(topicId, 105, 1);

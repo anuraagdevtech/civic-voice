@@ -61,7 +61,9 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
       table: 'sentiment_event',
       format: 'JSONEachRow',
       values: events.map((e) => {
-        const [country = 0, state = 0, district = 0, constituency = 0] = rollupAncestors(e.region_path);
+        const [country = 0, state = 0, district = 0, constituency = 0] = rollupAncestors(
+          e.region_path,
+        );
         const bands = encodeDemographicsForAnalytics(e.demographics);
         return {
           event_id: e.event_id,
@@ -132,7 +134,9 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
     });
     const rows = await result.json<Record<string, string | number>>();
     return rows.map((row) => {
-      const histogram = [0, 1, 2, 3, 4].map((i) => Number(row[`h${i}`])) as SeriesPoint['histogram'];
+      const histogram = [0, 1, 2, 3, 4].map((i) =>
+        Number(row[`h${i}`]),
+      ) as SeriesPoint['histogram'];
       const n = Number(row['n']);
       const rebuilt = fromHistogram(bucket, histogram);
       return {
@@ -220,7 +224,11 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
     });
     const [row] = await result.json<Record<string, string | number>>();
     const histogram = [0, 1, 2, 3, 4].map((i) => Math.max(0, Number(row?.[`h${i}`] ?? 0)));
-    return fromHistogram('cross', histogram as never, Math.max(0, Number(row?.['sum_intensity'] ?? 0)));
+    return fromHistogram(
+      'cross',
+      histogram as never,
+      Math.max(0, Number(row?.['sum_intensity'] ?? 0)),
+    );
   }
 
   async participants(topicId: number, regionId: number, day: string): Promise<number> {
@@ -275,8 +283,13 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
     const requests = Number(row?.['requests'] ?? 0);
     if (requests === 0) {
       return {
-        authorityId, requests: 0, onTimeRate: null, medianResponseDays: null,
-        deemedRefusalRate: null, firstAppealRate: null, appealOverturnRate: null,
+        authorityId,
+        requests: 0,
+        onTimeRate: null,
+        medianResponseDays: null,
+        deemedRefusalRate: null,
+        firstAppealRate: null,
+        appealOverturnRate: null,
       };
     }
     const appealed = Number(row?.['appealed'] ?? 0);
@@ -289,7 +302,9 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
       deemedRefusalRate: rate(Number(row?.['refused'] ?? 0)),
       firstAppealRate: rate(appealed),
       appealOverturnRate:
-        appealed === 0 ? null : Math.round((Number(row?.['overturned'] ?? 0) / appealed) * 1000) / 1000,
+        appealed === 0
+          ? null
+          : Math.round((Number(row?.['overturned'] ?? 0) / appealed) * 1000) / 1000,
     };
   }
 
@@ -302,7 +317,9 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
   }
 }
 
-export function createClickHouseAnalyticsStore(opts: ClickHouseOptions = {}): ClickHouseAnalyticsStore {
+export function createClickHouseAnalyticsStore(
+  opts: ClickHouseOptions = {},
+): ClickHouseAnalyticsStore {
   return new ClickHouseAnalyticsStore(opts);
 }
 

@@ -65,7 +65,13 @@ export class RtiService {
 
   async create(
     citizenId: string,
-    input: { authority_id: number; topic_id: number | null; subject: string; track: RtiTrack; filed_at?: string },
+    input: {
+      authority_id: number;
+      topic_id: number | null;
+      subject: string;
+      track: RtiTrack;
+      filed_at?: string;
+    },
   ) {
     const authority = await this.repos.catalogue.getAuthority(input.authority_id);
     if (!authority) throw notFound(`no authority ${input.authority_id}`);

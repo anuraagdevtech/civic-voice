@@ -40,7 +40,12 @@ export function parseRollupKey(s: string): RollupKey {
   const parts = s.split(':');
   if (parts.length !== 6) throw new RangeError(`bad rollup key: ${s}`);
   const [day, topicId, regionId, dim, bucket, tier] = parts as [
-    string, string, string, string, string, string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
   ];
   return {
     day,

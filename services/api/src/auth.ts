@@ -46,7 +46,12 @@ export function verifyToken(secret: string, token: string, now = Date.now()): Pr
   const parts = token.split('.');
   if (parts.length !== 6) throw unauthorized('malformed token');
   const [version, citizenId, tierRaw, expiresRaw, nonce, signature] = parts as [
-    string, string, string, string, string, string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
   ];
   if (version !== VERSION) throw unauthorized('unsupported token version');
 
@@ -72,7 +77,11 @@ export function verifyToken(secret: string, token: string, now = Date.now()): Pr
 }
 
 /** `Authorization: Bearer <token>`, tolerant of header casing but not of a missing scheme. */
-export function principalFromHeader(secret: string, header: string | undefined, now = Date.now()): Principal {
+export function principalFromHeader(
+  secret: string,
+  header: string | undefined,
+  now = Date.now(),
+): Principal {
   if (!header) throw unauthorized('missing authorization header');
   const match = /^Bearer\s+(.+)$/i.exec(header.trim());
   if (!match?.[1]) throw unauthorized('expected a bearer token');

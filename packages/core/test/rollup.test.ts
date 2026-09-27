@@ -48,7 +48,10 @@ describe('rollup fan-out', () => {
 
   test('fan-out stops at constituency: a ward is never a rollup level', () => {
     const regions = new Set(rollupKeysFor(fullEvent()).map((k) => k.regionId));
-    assert.deepEqual([...regions].sort((a, b) => a - b), [1, 10, 105, 1052]);
+    assert.deepEqual(
+      [...regions].sort((a, b) => a - b),
+      [1, 10, 105, 1052],
+    );
     assert.ok(!regions.has(10521), 'ward-level slices are k-suppressed anyway');
   });
 
@@ -64,9 +67,7 @@ describe('rollup fan-out', () => {
   });
 
   test('a declined dimension contributes to the total but to no bucket', () => {
-    const keys = rollupKeysFor(
-      fullEvent({ demographics: { age_band: '25-34', gender: 'male' } }),
-    );
+    const keys = rollupKeysFor(fullEvent({ demographics: { age_band: '25-34', gender: 'male' } }));
     assert.equal(keys.length, 4 * 3, '4 regions × (total + 2 dimensions)');
     assert.equal(keys.filter((k) => k.dim === 0).length, 4);
   });
@@ -121,8 +122,14 @@ describe('rollup mutations', () => {
     const additions = mutations.filter((m) => m.delta === 1);
     assert.equal(retractions.length, 28);
     assert.equal(additions.length, 28);
-    assert.ok(retractions.every((m) => m.mood === -1), 'retraction carries the OLD mood');
-    assert.ok(additions.every((m) => m.mood === 2), 'addition carries the NEW mood');
+    assert.ok(
+      retractions.every((m) => m.mood === -1),
+      'retraction carries the OLD mood',
+    );
+    assert.ok(
+      additions.every((m) => m.mood === 2),
+      'addition carries the NEW mood',
+    );
   });
 
   test('applying a change leaves the cohort size unchanged and moves the histogram', () => {

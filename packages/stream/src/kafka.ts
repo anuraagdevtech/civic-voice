@@ -1,6 +1,18 @@
-import { Kafka, Partitioners, type Consumer as KafkaConsumer, type Producer as KafkaProducer } from 'kafkajs';
+import {
+  Kafka,
+  Partitioners,
+  type Consumer as KafkaConsumer,
+  type Producer as KafkaProducer,
+} from 'kafkajs';
 import type { Logger } from '@civic-voice/observability';
-import type { Consumer, ConsumerHandler, Envelope, EventBus, Producer, PublishOptions } from './ports.ts';
+import type {
+  Consumer,
+  ConsumerHandler,
+  Envelope,
+  EventBus,
+  Producer,
+  PublishOptions,
+} from './ports.ts';
 
 /**
  * Kafka / Redpanda event bus.
@@ -152,13 +164,32 @@ export class KafkaEventBus implements EventBus {
     };
   }
 
-  /** Topic provisioning. Partition count is a capacity decision, so it is explicit, not defaulted. */
+  /**
+   * Topic provisioning, and — more importantly — partition-count verification.
+   *
+   * Partition count is a capacity decision: it is the hard ceiling on consumer parallelism, so a
+   * topic with one partition caps the entire aggregation pipeline at one consumer no matter how many
+   * worker pods are running (docs/SCALING.md §3).
+   *
+   * The failure this guards against is specific and easy to hit: most brokers auto-create a topic
+   * with a default of 1 partition the first time anyone produces to or subscribes on it. Whichever
+   * process starts first wins, and if that is a consumer, the topic is silently created wrong. It
+   * works perfectly in development and collapses under load, which is the worst possible time to
+   * find out. So every service calls this before touching a topic, and a mismatch is surfaced rather
+   * than tolerated.
+   *
+   * An existing topic is never re-partitioned automatically: increasing partitions changes the
+   * key→partition mapping, so events for one topic_id would start landing on a different partition
+   * from their predecessors, and the ordering the compensating-delta logic relies on would break.
+   * That has to be a deliberate, planned migration.
+   */
   async ensureTopics(topics: readonly { topic: string; partitions?: number }[]): Promise<void> {
     const admin = this.kafka.admin();
     await admin.connect();
     try {
       const existing = new Set(await admin.listTopics());
       const missing = topics.filter((t) => !existing.has(t.topic));
+
       if (missing.length > 0) {
         await admin.createTopics({
           topics: missing.map((t) => ({
@@ -172,7 +203,39 @@ export class KafkaEventBus implements EventBus {
               { name: 'min.insync.replicas', value: '2' },
             ],
           })),
+          waitForLeaders: true,
         });
+      }
+
+      const present = topics.filter((t) => existing.has(t.topic));
+      if (present.length === 0) return;
+
+      const metadata = await admin.fetchTopicMetadata({ topics: present.map((t) => t.topic) });
+      const actual = new Map(metadata.topics.map((t) => [t.name, t.partitions.length]));
+
+      const underPartitioned = present
+        .map((t) => ({
+          topic: t.topic,
+          want: t.partitions ?? SENTIMENT_PARTITIONS,
+          have: actual.get(t.topic) ?? 0,
+        }))
+        .filter((t) => t.have < t.want);
+
+      if (underPartitioned.length > 0) {
+        const detail = underPartitioned
+          .map((t) => `${t.topic} has ${t.have} partition(s), expected ${t.want}`)
+          .join('; ');
+        const remedy =
+          'A broker auto-created it with the default partition count. Consumer parallelism is capped ' +
+          'at the partition count, so this will not scale. Re-partition deliberately (it changes the ' +
+          'key→partition mapping and must be planned), or recreate the topic before there is data.';
+
+        if (process.env['CIVIC_ENV'] === 'production') {
+          // Refusing to start is the right call here: the alternative is a fleet that looks healthy
+          // and cannot keep up, discovered during the first national spike.
+          throw new Error(`under-partitioned topic(s): ${detail}. ${remedy}`);
+        }
+        this.logger?.warn({ underPartitioned }, `under-partitioned topic(s): ${detail}. ${remedy}`);
       }
     } finally {
       await admin.disconnect();

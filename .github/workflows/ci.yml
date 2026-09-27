@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The fast lane: no daemons, so it finishes in seconds and gives a signal on every push.
+  # This is the check that stays useful precisely because it never needs Docker (ADR-0006).
+  check:
+    name: Typecheck, format and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm format:check
+      - name: Unit and in-memory integration tests
+        run: pnpm test
+
+  # The slow lane: the same conformance suites against the real engines. In-memory adapters are only
+  # acceptable because this job proves they have not diverged.
+  integration:
+    name: Integration against real infrastructure
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: civic
+          POSTGRES_PASSWORD: civic
+          POSTGRES_DB: civic
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U civic" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.8-alpine
+        env:
+          CLICKHOUSE_USER: civic
+          CLICKHOUSE_PASSWORD: civic
+          CLICKHOUSE_DB: civic
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
+        ports: ['8123:8123']
+    env:
+      CIVIC_CATALOGUE_URL: postgres://civic:civic@127.0.0.1:5432/civic
+      CIVIC_SHARD_URLS: postgres://civic:civic@127.0.0.1:5432/civic
+      REDIS_URL: redis://127.0.0.1:6379
+      CLICKHOUSE_URL: http://127.0.0.1:8123
+      CLICKHOUSE_USER: civic
+      CLICKHOUSE_PASSWORD: civic
+      CLICKHOUSE_DB: civic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm migrate
+      - run: pnpm seed
+      - run: node packages/analytics/src/cli/migrate.ts
+      - name: Conformance suites against Postgres, Redis and ClickHouse
+        run: pnpm test
+
+  web:
+    name: Build the web app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @civic-voice/web build
+      - name: Enforce the bundle budget
+        # The web app is the first thing a citizen on a 2G connection waits for. A budget that is
+        # only checked by hand is not a budget.
+        run: |
+          size=$(gzip -c apps/web/dist/assets/*.js | wc -c)
+          echo "gzipped JavaScript: ${size} bytes"
+          if [ "$size" -gt 180000 ]; then
+            echo "::error::bundle is ${size} bytes gzipped, over the 180 kB budget"
+            exit 1
+          fi
+
+  images:
+    name: Build container images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/images/Dockerfile.api
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/images/Dockerfile.worker
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -24,11 +24,12 @@ export interface Envelope<T> {
 }
 
 export interface Producer {
-  publish<T>(topic: string, value: T, opts: PublishOptions): Promise<{ partition: number; offset: string }>;
-  publishBatch<T>(
+  publish<T>(
     topic: string,
-    messages: readonly { value: T; key: string }[],
-  ): Promise<void>;
+    value: T,
+    opts: PublishOptions,
+  ): Promise<{ partition: number; offset: string }>;
+  publishBatch<T>(topic: string, messages: readonly { value: T; key: string }[]): Promise<void>;
   ready(): Promise<void>;
   close(): Promise<void>;
 }
@@ -61,11 +62,49 @@ export type SentimentEnvelope = Envelope<SentimentEvent>;
 import { EVENT_TOPICS } from '@civic-voice/contracts';
 
 /**
- * Topics to provision, with their partition counts. Partition count is a capacity decision
- * (docs/SCALING.md §3), so it is declared here rather than left to a broker default.
+ * Topics to provision, with their partition counts.
+ *
+ * Partition count is a capacity decision (docs/SCALING.md §3) — it is the hard ceiling on consumer
+ * parallelism — so it is declared here rather than left to a broker default. 256 partitions at the
+ * modelled spike is under 1.2 MB/s each.
+ *
+ * It is overridable because a single-node development broker cannot host 256 partitions, and a dev
+ * stack that refuses to start is worse than one running at a smaller size. The production value is
+ * the default, so an unset variable gives the right answer rather than a convenient one.
  */
-export const EVENT_TOPICS_LIST = [
-  { topic: EVENT_TOPICS.SENTIMENT, partitions: 256 },
-  { topic: EVENT_TOPICS.RTI_TRANSITION, partitions: 16 },
-  { topic: EVENT_TOPICS.MODERATION, partitions: 16 },
-] as const;
+export interface TopicSpec {
+  topic: string;
+  partitions: number;
+}
+
+export const PRODUCTION_PARTITIONS = {
+  sentiment: 256,
+  rti: 16,
+  moderation: 16,
+} as const;
+
+export function eventTopics(env: NodeJS.ProcessEnv = process.env): TopicSpec[] {
+  const count = (name: string, fallback: number) => {
+    const raw = env[name];
+    if (raw === undefined) return fallback;
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new RangeError(`${name} must be a positive integer, got ${raw}`);
+    }
+    return parsed;
+  };
+  return [
+    {
+      topic: EVENT_TOPICS.SENTIMENT,
+      partitions: count('CIVIC_SENTIMENT_PARTITIONS', PRODUCTION_PARTITIONS.sentiment),
+    },
+    {
+      topic: EVENT_TOPICS.RTI_TRANSITION,
+      partitions: count('CIVIC_RTI_PARTITIONS', PRODUCTION_PARTITIONS.rti),
+    },
+    {
+      topic: EVENT_TOPICS.MODERATION,
+      partitions: count('CIVIC_MODERATION_PARTITIONS', PRODUCTION_PARTITIONS.moderation),
+    },
+  ];
+}

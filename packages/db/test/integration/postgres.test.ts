@@ -15,7 +15,10 @@ import { runRepositoryContract } from '../repositories.contract.ts';
 const config = loadDbConfig();
 
 const reachable = await (async () => {
-  const client = new Client({ connectionString: config.catalogueUrl, connectionTimeoutMillis: 1_500 });
+  const client = new Client({
+    connectionString: config.catalogueUrl,
+    connectionTimeoutMillis: 1_500,
+  });
   try {
     await client.connect();
     await client.query('SELECT 1 FROM civic_shard.citizen LIMIT 1');
@@ -56,11 +59,16 @@ if (!reachable) {
       try {
         const id = uuidv7();
         await repos.citizens.create({
-          id, region_id: 1052, region_path: [1, 10, 105, 1052], locale: 'en', demographics: {},
+          id,
+          region_id: 1052,
+          region_path: [1, 10, 105, 1052],
+          locale: 'en',
+          demographics: {},
         });
         const stored = await router.withCitizenShard(id, async (db) => {
           const { rows } = await db.query<{ vshard: number }>(
-            'SELECT vshard FROM civic_shard.citizen WHERE id = $1', [id],
+            'SELECT vshard FROM civic_shard.citizen WHERE id = $1',
+            [id],
           );
           return Number(rows[0]?.vshard);
         });
@@ -77,18 +85,34 @@ if (!reachable) {
       try {
         const id = uuidv7();
         await repos.citizens.create({
-          id, region_id: 1052, region_path: [1, 10, 105, 1052], locale: 'en', demographics: {},
+          id,
+          region_id: 1052,
+          region_path: [1, 10, 105, 1052],
+          locale: 'en',
+          demographics: {},
         });
         await repos.sentiment.upsert(id, {
-          topic_id: 1, mood: -2, intensity: 5, reason_code: 'no_reason', event_id: uuidv7(),
+          topic_id: 1,
+          mood: -2,
+          intensity: 5,
+          reason_code: 'no_reason',
+          event_id: uuidv7(),
         });
 
         const results = await Promise.all([
           repos.sentiment.upsert(id, {
-            topic_id: 1, mood: 1, intensity: 3, reason_code: 'no_reason', event_id: uuidv7(),
+            topic_id: 1,
+            mood: 1,
+            intensity: 3,
+            reason_code: 'no_reason',
+            event_id: uuidv7(),
           }),
           repos.sentiment.upsert(id, {
-            topic_id: 1, mood: 2, intensity: 4, reason_code: 'no_reason', event_id: uuidv7(),
+            topic_id: 1,
+            mood: 2,
+            intensity: 4,
+            reason_code: 'no_reason',
+            event_id: uuidv7(),
           }),
         ]);
 
@@ -109,7 +133,9 @@ if (!reachable) {
 
         const up = (await repos.catalogue.childRegions(1)).find((r) => r.name === 'Uttar Pradesh');
         assert.ok(up, 'expected Uttar Pradesh in the seed');
-        const lucknow = (await repos.catalogue.childRegions(up.id)).find((r) => r.name === 'Lucknow');
+        const lucknow = (await repos.catalogue.childRegions(up.id)).find(
+          (r) => r.name === 'Lucknow',
+        );
         assert.ok(lucknow);
         const cantt = (await repos.catalogue.childRegions(lucknow.id))[0];
         assert.ok(cantt);

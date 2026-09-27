@@ -1,4 +1,8 @@
-import { DEFAULT_PUBLIC_TIER, DIMENSION_TOTAL, type VerificationTier } from '@civic-voice/contracts';
+import {
+  DEFAULT_PUBLIC_TIER,
+  DIMENSION_TOTAL,
+  type VerificationTier,
+} from '@civic-voice/contracts';
 import {
   detectHomogeneityAnomaly,
   detectPopulationShareViolation,

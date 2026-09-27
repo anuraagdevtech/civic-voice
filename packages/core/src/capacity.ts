@@ -53,8 +53,17 @@ export const ASSUMPTIONS: CapacityAssumptions = {
   /** Fraction of aggregate reads that terminate at the CDN. The load-bearing assumption. */
   edgeHitRate: 0.98,
 
-  /** Measured per-write service time: one Redis pipeline plus one batched log append. */
-  cpuMsPerWrite: 1.5,
+  /**
+   * Measured per-write service time: one Redis pipeline plus one batched log append.
+   *
+   * 2.0 ms is what `infra/loadtest` measures, not what the design hoped for. The first measurement
+   * came in at 2.08 ms against an assumed 1.5, which would have understated the spike fleet by a
+   * third. The measurement environment (everything co-located on one machine) is pessimistic, so
+   * production is likely better — but provisioning against the optimistic figure is the error that
+   * drops citizens' submissions during a budget speech, and provisioning against the pessimistic one
+   * only costs money. Re-measure with `pnpm loadtest` and move this number when the evidence moves.
+   */
+  cpuMsPerWrite: 2.0,
   coresPerPod: 4,
 
   bytesPerEvent: 400,
@@ -124,8 +133,7 @@ export function computeCapacity(a: CapacityAssumptions = ASSUMPTIONS): CapacityM
 
   const spikeRollupIncrementsPerSecond =
     (rollupIncrementsPerDay / a.secondsPerDay) * a.eventSpikeMultiplier;
-  const redisCommandsPerSecondAtSpike =
-    spikeRollupIncrementsPerSecond * a.redisCommandsPerKeyTouch;
+  const redisCommandsPerSecondAtSpike = spikeRollupIncrementsPerSecond * a.redisCommandsPerKeyTouch;
   const redisCommandsPerSecondPerShardAtSpike = redisCommandsPerSecondAtSpike / a.redisShards;
 
   return {

@@ -49,7 +49,13 @@ export async function buildApp(deps: AppDeps) {
 
   const salts = new DerivedTopicSaltProvider(config.pseudonymSaltRoot);
   const sentiment = new SentimentService({
-    repos, cache, bus, salts, metrics, logger, kAnonymity: config.kAnonymity,
+    repos,
+    cache,
+    bus,
+    salts,
+    metrics,
+    logger,
+    kAnonymity: config.kAnonymity,
   });
   const rti = new RtiService(repos);
   const tax = new TaxService(repos, cache);
@@ -127,7 +133,9 @@ export async function buildApp(deps: AppDeps) {
   app.addHook('onResponse', async (request, reply) => {
     const route = request.routeOptions.url ?? 'unknown';
     metrics.inc('civic_http_requests_total', {
-      route, method: request.method, status: reply.statusCode,
+      route,
+      method: request.method,
+      status: reply.statusCode,
     });
     metrics.observe('civic_http_duration_ms', reply.elapsedTime, { route });
   });
@@ -163,7 +171,7 @@ export async function buildApp(deps: AppDeps) {
     // base Error type, so narrow it rather than assuming it is there.
     const status =
       typeof (error as { statusCode?: unknown }).statusCode === 'number'
-        ? ((error as { statusCode: number }).statusCode)
+        ? (error as { statusCode: number }).statusCode
         : 500;
     if (status < 500) {
       return reply.status(status).send({
@@ -182,14 +190,13 @@ export async function buildApp(deps: AppDeps) {
   });
 
   app.setNotFoundHandler((_request, reply) =>
-    reply.status(404).send({ error: { code: 'not_found' satisfies ErrorCode, message: 'no such route' } }),
+    reply
+      .status(404)
+      .send({ error: { code: 'not_found' satisfies ErrorCode, message: 'no such route' } }),
   );
 
   const authenticate = async (request: FastifyRequest): Promise<Principal> => {
-    const principal = principalFromHeader(
-      config.tokenSecret,
-      request.headers.authorization,
-    );
+    const principal = principalFromHeader(config.tokenSecret, request.headers.authorization);
     request.principal = principal;
     return principal;
   };
@@ -349,6 +356,14 @@ export async function buildApp(deps: AppDeps) {
     return topic;
   });
 
+  app.get('/v1/authorities/:id', async (request, reply) => {
+    const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+    const authority = await repos.catalogue.getAuthority(id);
+    if (!authority) throw notFound(`no authority ${id}`);
+    reply.header('cache-control', 'public, max-age=3600, stale-while-revalidate=86400');
+    return authority;
+  });
+
   // ── Sentiment: read ──
 
   app.get('/v1/topics/:id/mood', async (request, reply) => {
@@ -384,7 +399,10 @@ export async function buildApp(deps: AppDeps) {
 
     // Scope the key to the caller, so one client cannot collide with — or replay — another's write.
     const scopedKey = `${principal.citizenId}:${idempotencyKey}`;
-    const requestHash = createHash('sha256').update(JSON.stringify(input)).digest('hex').slice(0, 32);
+    const requestHash = createHash('sha256')
+      .update(JSON.stringify(input))
+      .digest('hex')
+      .slice(0, 32);
 
     const claim = await cache.idempotency.claim(scopedKey, requestHash);
     if (!claim.claimed) {
@@ -400,7 +418,8 @@ export async function buildApp(deps: AppDeps) {
       }
       // The original is still in flight. Telling the client to retry is honest; guessing is not.
       throw new DomainError('conflict', 'an identical submission is still being processed', {
-        status: 409, retryAfterSeconds: 2,
+        status: 409,
+        retryAfterSeconds: 2,
       });
     }
 
@@ -441,9 +460,7 @@ export async function buildApp(deps: AppDeps) {
 
   app.get('/v1/me/sentiment', async (request, reply) => {
     const principal = await authenticate(request);
-    const query = z
-      .object({ topic_ids: z.string().max(2000).optional() })
-      .parse(request.query);
+    const query = z.object({ topic_ids: z.string().max(2000).optional() }).parse(request.query);
 
     const topicIds = query.topic_ids
       ?.split(',')

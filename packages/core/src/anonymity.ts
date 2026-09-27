@@ -71,10 +71,7 @@ function publish(raw: RawBucket, roundingFloor: number): MoodBucket {
   };
 }
 
-function suppress(
-  bucket: string,
-  reason: 'below_k' | 'complementary' | 'quarantined',
-): MoodBucket {
+function suppress(bucket: string, reason: 'below_k' | 'complementary' | 'quarantined'): MoodBucket {
   return {
     bucket,
     n: 0,
@@ -122,10 +119,11 @@ export function applyAnonymityGate(
       .filter((b) => !reasons.has(b.bucket) && b.n > 0)
       .sort((a, b) => a.n - b.n);
 
-    const unknownCount = () => [...reasons.keys()].filter((name) => {
-      const b = buckets.find((x) => x.bucket === name);
-      return b !== undefined && b.n > 0;
-    }).length;
+    const unknownCount = () =>
+      [...reasons.keys()].filter((name) => {
+        const b = buckets.find((x) => x.bucket === name);
+        return b !== undefined && b.n > 0;
+      }).length;
 
     const residual = () =>
       buckets.filter((b) => reasons.has(b.bucket)).reduce((sum, b) => sum + b.n, 0);
@@ -152,13 +150,15 @@ export function applyAnonymityGate(
  * Returns true when the residual (total minus everything published) can be attributed to a single
  * non-empty bucket, or is small enough to narrow one to a near-exact value.
  */
-export function leaksBySubtraction(total: MoodBucket, buckets: readonly MoodBucket[], k = DEFAULT_K): boolean {
+export function leaksBySubtraction(
+  total: MoodBucket,
+  buckets: readonly MoodBucket[],
+  k = DEFAULT_K,
+): boolean {
   if (total.suppressed) return false;
   const suppressedBuckets = buckets.filter((b) => b.suppressed);
   if (suppressedBuckets.length === 0) return false;
-  const publishedSum = buckets
-    .filter((b) => !b.suppressed)
-    .reduce((sum, b) => sum + b.n, 0);
+  const publishedSum = buckets.filter((b) => !b.suppressed).reduce((sum, b) => sum + b.n, 0);
   const residual = total.n - publishedSum;
   // One unknown ⇒ the residual *is* that bucket. A residual below k ⇒ every unknown is pinned to a
   // range narrower than the threshold was meant to guarantee.

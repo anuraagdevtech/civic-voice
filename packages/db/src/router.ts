@@ -76,7 +76,9 @@ export class ShardRouter {
 
     for (const [id, pool] of this.pools) {
       // An idle-client error that nobody listens for takes the process down.
-      pool.on('error', (err) => this.logger?.error({ err, cluster: id }, 'idle shard client error'));
+      pool.on('error', (err) =>
+        this.logger?.error({ err, cluster: id }, 'idle shard client error'),
+      );
     }
     this.cataloguePool.on('error', (err) =>
       this.logger?.error({ err }, 'idle catalogue client error'),
@@ -145,10 +147,7 @@ export class ShardRouter {
 
   async close(): Promise<void> {
     this.closed = true;
-    await Promise.all([
-      ...[...this.pools.values()].map((p) => p.end()),
-      this.cataloguePool.end(),
-    ]);
+    await Promise.all([...[...this.pools.values()].map((p) => p.end()), this.cataloguePool.end()]);
   }
 
   private poolFor(cluster: ClusterConfig): Pool {

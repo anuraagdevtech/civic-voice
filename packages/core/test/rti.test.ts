@@ -56,10 +56,7 @@ describe('RTI statutory clock', () => {
   });
 
   test('a request that was answered is never deemed refused, even late', () => {
-    assert.equal(
-      isDeemedRefused(filed({ responded_at: '2026-03-15' }), '2026-06-01'),
-      false,
-    );
+    assert.equal(isDeemedRefused(filed({ responded_at: '2026-03-15' }), '2026-06-01'), false);
   });
 
   test('§19(1): the appeal window runs from deemed refusal when no reply came', () => {
@@ -97,7 +94,10 @@ describe('RTI statutory clock', () => {
     assert.equal(pio?.breached, true);
     assert.equal(pio?.days_remaining, -10);
 
-    const answered = rtiDeadlines(filed({ responded_at: '2026-02-05', state: 'responded' }), '2026-02-10');
+    const answered = rtiDeadlines(
+      filed({ responded_at: '2026-02-05', state: 'responded' }),
+      '2026-02-10',
+    );
     assert.equal(answered.find((d) => d.label === 'PIO response due')?.breached, false);
   });
 
@@ -139,7 +139,10 @@ describe('RTI next action', () => {
   });
 
   test('the Commission has no statutory clock, and we say so rather than inventing one', () => {
-    const a = nextAction(filed({ state: 'second_appeal', second_appeal_at: '2026-07-01' }), '2027-01-01');
+    const a = nextAction(
+      filed({ state: 'second_appeal', second_appeal_at: '2026-07-01' }),
+      '2027-01-01',
+    );
     assert.equal(a.action, 'await_sic_response');
     assert.equal(a.deadline, null);
   });

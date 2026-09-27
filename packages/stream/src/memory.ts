@@ -62,7 +62,12 @@ export class MemoryEventBus implements EventBus {
       async publish<T>(topic: string, value: T, options: PublishOptions) {
         const messages = bus.log.get(topic) ?? [];
         const partition = partitionFor(options.key, bus.partitions);
-        const stored: StoredMessage = { partition, offset: messages.length, key: options.key, value };
+        const stored: StoredMessage = {
+          partition,
+          offset: messages.length,
+          key: options.key,
+          value,
+        };
         messages.push(stored);
         bus.log.set(topic, messages);
         if (bus.autoDeliver) await bus.drain();

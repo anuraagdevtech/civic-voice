@@ -13,7 +13,12 @@ import {
   ShardRouter,
   type Repositories,
 } from '@civic-voice/db';
-import { createKafkaEventBus, createMemoryEventBus, EVENT_TOPICS_LIST, type EventBus } from '@civic-voice/stream';
+import {
+  createKafkaEventBus,
+  createMemoryEventBus,
+  eventTopics,
+  type EventBus,
+} from '@civic-voice/stream';
 import type { Logger } from '@civic-voice/observability';
 import type { ApiConfig } from './config.ts';
 
@@ -41,7 +46,9 @@ export async function createInfrastructure(
     const cache = createMemoryCacheTier();
     const bus = createMemoryEventBus();
     return {
-      repos, cache, bus,
+      repos,
+      cache,
+      bus,
       async close() {
         await Promise.all([repos.close(), cache.close(), bus.close()]);
       },
@@ -67,10 +74,12 @@ export async function createInfrastructure(
   // Fail startup rather than accept traffic we cannot serve: the Redis client has its offline queue
   // disabled, so a pod that has not connected would reject every write.
   await Promise.all([repos.ready(), cache.ready(), bus.producer.ready()]);
-  await bus.ensureTopics(EVENT_TOPICS_LIST);
+  await bus.ensureTopics(eventTopics());
 
   return {
-    repos, cache, bus,
+    repos,
+    cache,
+    bus,
     async close() {
       await Promise.all([repos.close(), cache.close(), bus.close()]);
     },

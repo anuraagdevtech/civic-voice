@@ -45,7 +45,10 @@ describe('identity blind indexing', () => {
   });
 
   test('rotating the pepper changes every index, which is what re-blinding means', () => {
-    assert.notEqual(blindIndex(randomBytes(32), '9876543210'), blindIndex(randomBytes(32), '9876543210'));
+    assert.notEqual(
+      blindIndex(randomBytes(32), '9876543210'),
+      blindIndex(randomBytes(32), '9876543210'),
+    );
   });
 
   test('refuses a pepper too short to be worth anything', () => {
@@ -53,7 +56,13 @@ describe('identity blind indexing', () => {
   });
 
   test('normalisation collapses the ways one number can be written', () => {
-    const forms = ['9876543210', '+91 98765 43210', '09876543210', '91-9876543210', '(98765) 43210'];
+    const forms = [
+      '9876543210',
+      '+91 98765 43210',
+      '09876543210',
+      '91-9876543210',
+      '(98765) 43210',
+    ];
     const normalised = new Set(forms.map(normaliseIndianMobile));
     assert.equal(normalised.size, 1, `all forms must normalise alike, got ${[...normalised]}`);
     assert.equal([...normalised][0], '9876543210');
