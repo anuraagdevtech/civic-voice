@@ -14,8 +14,12 @@ Built and sized for **1B+ registered citizens**.
 | **Mood tracking** | A citizen records how they feel about a government decision, policy or scheme. Aggregates are published per region and per demographic dimension, and never for a group of fewer than 25 people. |
 | **RTI tracking** | Log an RTI request and the platform tracks the statutory clock under the RTI Act 2005 — telling you the day a deadline lapses, that silence is a *deemed refusal* you can appeal, and who the First Appellate Authority is. |
 | **Tax utilisation** | What a region was allocated, what was released, and what was actually spent, per scheme, with per-capita figures and a link to the source document for every number. |
+| **Discussion** | New GOs, projects, gazette notifications and news, ingested from government portals and scoped to the place they concern, become discussions. Residents of that place — and only they — comment, reply and upvote; a digest says what people think and what they say needs to be done. Residents can raise local issues for their ward or city. |
+| **Near me** | Location resolves to a ward (Greater Hyderabad's 145 real wards today) and is never stored. The home page shows what people where you live are discussing, new orders and projects for your area, and the government jobs open to you. |
+| **Youth, farmers and more** | What each group raises — jobs, exams, crop prices, water — from model-labelled comments, published only when at least 25 distinct people contributed. |
+| **Money and jobs** | Budgets, deficits, debt, prices, unemployment and crop MSPs with their sources; open government job notifications and the vacancies they state. |
 
-The three are joined by the region hierarchy and the topic graph. A district's mood on a scheme, the
+They are joined by the region hierarchy and the topic graph. A district's mood on a scheme, the
 RTI responses about that scheme, and the rupees actually spent on it in that district are all
 reachable from one place. That join is the product.
 
@@ -24,20 +28,26 @@ reachable from one place. That join is the product.
 ```bash
 pnpm install
 
-# No infrastructure needed — in-memory adapters, real code paths.
-CIVIC_MEMORY_ADAPTERS=1 pnpm dev:api
+# No infrastructure needed — the whole platform in one process on in-memory adapters,
+# with sample documents and invented demo comments (a banner on every page says so).
+pnpm dev:demo
+VITE_API_URL=http://127.0.0.1:8080 pnpm dev:web
 
 # Or the full stack:
 pnpm infra:up                              # Postgres, Redis, Redpanda, ClickHouse
 pnpm migrate && pnpm seed                  # schema + real Indian geography and schemes
 node packages/analytics/src/cli/migrate.ts # ClickHouse schema
+pnpm ingest:run --fixtures                 # sample GOs, projects and job notifications
+pnpm indicators:load --sample              # sample indicators, badged as such
 pnpm dev:api & pnpm dev:worker & pnpm dev:web
 ```
 
 ```bash
-pnpm test        # 300+ unit and conformance tests, no daemon required
-pnpm typecheck   # the whole workspace, including both client apps
-pnpm loadtest    # measures the per-write cost the capacity model depends on
+pnpm test            # ~470 unit and conformance tests, no daemon required
+pnpm typecheck       # the whole workspace, including both client apps
+pnpm nlp:evaluate    # cross-validated accuracy of the comment model, against baselines
+pnpm ingest:check    # every source through the full ingestion pipeline (--live for the real sites)
+pnpm loadtest        # measures the per-write cost the capacity model depends on
 ```
 
 ## How it scales
@@ -101,10 +111,11 @@ Details in [docs/PRIVACY.md](docs/PRIVACY.md).
 ## Layout
 
 ```
-apps/web         Vite + React PWA — static, CDN-first, 92 kB gzipped, offline write queue
+apps/web         Vite + React PWA — static, CDN-first, ~103 kB gzipped, offline write queue
 apps/mobile      Expo React Native app on the same SDK
 services/api     Stateless Fastify API — idempotent ingest, edge-cacheable reads
-services/worker  Aggregation pipeline, RTI deadline sweeper, anomaly detection, reconciliation
+services/worker  Aggregation and comment pipelines, RTI deadline sweeper, reconciliation
+services/ingestor  Polls government portals and news feeds, politely
 packages/
   contracts      Zod schemas — one source of runtime validation and static types
   core           Domain logic: k-anonymity, pseudonyms, the RTI clock, rollups, the capacity model
@@ -114,8 +125,11 @@ packages/
   analytics      ClickHouse event history and rollups
   observability  Structured logging with redaction at the logger, and metrics
   sdk            One typed client for web and mobile
-infra/           docker-compose, Kubernetes, a Terraform sketch, the load-test harness
-docs/            Architecture, scaling, data model, privacy, trust, RTI — and 7 ADRs
+  nlp            The comment model: language, moderation, sentiment, needs, suggestions, digests
+  geo            The region tree, real ward boundaries, point-in-polygon location lookup
+  ingest         Polite fetching, RSS/HTML/PDF parsing, GO and vacancy extraction, geo-tagging
+infra/           docker-compose, Kubernetes, a Terraform sketch, the load-test harness, the dev stack
+docs/            Architecture, scaling, data model, privacy, trust, RTI — and 12 ADRs
 ```
 
 Every infrastructure dependency is an interface with two implementations, a real one and an
@@ -139,10 +153,13 @@ Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Then:
 
 ## Status
 
-The platform core is built, tested and verified end to end against real Postgres, Redis, Redpanda and
-ClickHouse. What a production deployment still needs is listed in
-[docs/ROADMAP.md](docs/ROADMAP.md) — chiefly the identity-verification provider integration, the
-notification fan-out, the RTI disclosure pipeline, and the datasets behind the catalogue.
+The platform — opinions, RTI, tax utilisation and the discussion forum — is built, tested and verified
+end to end against real Postgres, Redis, Redpanda and ClickHouse. What a production deployment still
+needs is listed in [docs/ROADMAP.md](docs/ROADMAP.md) — chiefly verifying the scrapers against the
+live portals, a moderation console, the identity-verification provider, notification fan-out, and
+the datasets behind the catalogue.
+
+Ward boundaries © OpenStreetMap contributors, under the ODbL ([packages/geo/data/ATTRIBUTION.md](packages/geo/data/ATTRIBUTION.md)).
 
 ## Licence
 

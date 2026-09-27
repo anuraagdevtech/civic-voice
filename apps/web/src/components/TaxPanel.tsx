@@ -100,6 +100,14 @@ export function TaxPanel({ regionId, regionName }: { regionId: number; regionNam
                         </a>
                       ) : (
                         line.scheme_name
+                      )}{' '}
+                      {line.provenance === 'sample' && (
+                        <span
+                          className="badge sample"
+                          title="Development sample: not an official figure"
+                        >
+                          sample
+                        </span>
                       )}
                     </td>
                     <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>

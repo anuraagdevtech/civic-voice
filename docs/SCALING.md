@@ -180,3 +180,33 @@ The dominant *levers*, in order:
   materialisation to explode.
 - **No unbounded free-text on the hot path.** Reasons are bounded, optional, and moderated
   asynchronously, so ingest stays a fixed-size append.
+
+## 11. The forum
+
+Comments have the opposite shape to opinions: far fewer writes, each far more expensive, read as a
+thread rather than as an aggregate. The model is `computeForumCapacity` in
+`packages/core/src/capacity.ts`, and `packages/core/test/capacity.test.ts` pins every figure below.
+
+| | Average | 100× spike |
+| --- | --- | --- |
+| Comments (1 session in 20 posts) | ~6.3M/day, ~73/s | ~7.3k/s |
+| Worker CPU for analysis (measured 0.68 ms at 54 chars, assumed 2.5 ms at 200) | ~0.2 cores | ~18 cores, 5 pods |
+| Large-model escalations wanted (31% uncertain, measured held-out) | ~23/s | ~2,250/s |
+| Large-model escalations allowed (1,200/min per worker pod) | ~20/s | 100/s → 5 requests/s |
+| Thread reads reaching origin (90% edge hit at a 15 s TTL) | — | ~13k/s |
+| Comment storage | ~2.7 TB/year across all shards | |
+
+Three things carry this:
+
+- **The escalation budget, not the traffic, bounds large-model spend.** In steady state it covers
+  nearly every uncertain comment; at a spike, most keep their in-house labels (ADR-0011).
+- **A thread is one shard** (ADR-0008), so a national controversy is a hot spot. Writes are within one
+  primary's capacity even if a single topic took the whole spike; reads collapse at the edge, where a
+  thread's first page costs a few origin requests per POP per TTL however many people load it. The
+  13k/s above is the conservative figure, not the expected one.
+- **Trending is batched.** The pipeline sums a batch's weight per topic before one `ZINCRBY` per
+  region on the topic's jurisdiction path; even unbatched, the hottest key (the national bucket) is
+  under 2% of one Redis shard at the spike.
+
+The ingestor is not on this table: a few dozen sources polled every 30–120 minutes is negligible
+load, and it is deliberately a single replica (ADR-0012).

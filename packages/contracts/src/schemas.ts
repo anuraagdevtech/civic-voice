@@ -315,6 +315,8 @@ export const budgetLineSchema = z.object({
   utilised: z.number().nonnegative().nullable(),
   /** Every monetary figure carries provenance. No number appears without a source. */
   source_refs: z.array(z.string()).default([]),
+  /** `sample` for development seed figures, badged wherever they appear. */
+  provenance: z.enum(['official', 'news', 'sample']).default('official'),
 });
 export type BudgetLine = z.infer<typeof budgetLineSchema>;
 

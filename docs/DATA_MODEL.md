@@ -154,6 +154,19 @@ why losing a Redis shard is an availability event and not a data-loss event.
 
 ---
 
+## 4a. Forum, documents, indicators (ADR-0008, ADR-0012)
+
+| Store | Table | Keyed by | Notes |
+| --- | --- | --- | --- |
+| Shard (topic's) | `comment`, `comment_vote`, `comment_report`, `topic_digest` | `topic_id` | A thread is one shard; partial indexes on `state = 'published'` for "top" and "new" |
+| Shard (citizen's) | `my_comment` | `citizen_id` | The author's index: "my comments" and erasure |
+| Shard (citizen's) | `citizen.region_basis` | `citizen_id` | `declared` or `device`-confirmed home region |
+| Catalogue | `document` | `content_hash` | Jurisdiction + canonical URL or GO number; `primary_region_path` and `geo_region_ids` for "what concerns me" |
+| Catalogue | `source_health` | `source_id` | Last poll per source; flags probable redesigns |
+| Catalogue | `indicator`, `indicator_observation` | `code`, `region_id`, `period` | Every observation carries `provenance` |
+| ClickHouse | `comment_event` | `dedupe_key` | No body, id or pseudonym; hour-coarsened; `author_key` for distinct voices |
+| Redis | `tr:{r<region>}:<hour>`, `tc:{t<topic>}:<hour>` | region / topic | Hourly trending buckets, summed with a 6-hour half-life |
+
 ## 5. Invariants the code enforces
 
 1. No Postgres query without a `citizen_id` (sharded) or a bounded catalogue key.

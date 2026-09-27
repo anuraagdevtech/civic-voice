@@ -43,48 +43,59 @@ const SCHEMES = [
   { name: 'Samagra Shiksha', ministry: 'Ministry of Education', sector: 'Education' },
 ];
 
-const AUTHORITIES = [
+/**
+ * Public information officers and first appellate authorities are not listed here: each authority
+ * publishes its own under RTI Act §4(1)(b), and an invented address that looks official would send a
+ * citizen's request nowhere. The production loader takes them from those published lists.
+ */
+const AUTHORITIES: Array<{
+  name: string;
+  kind: string;
+  region: string;
+  pio: string | null;
+  faa: string | null;
+}> = [
   {
     name: 'Ministry of Rural Development',
     kind: 'union_ministry',
     region: 'India',
-    pio: 'pio-mord@gov.in',
-    faa: 'faa-mord@gov.in',
+    pio: null,
+    faa: null,
   },
   {
     name: 'Ministry of Jal Shakti',
     kind: 'union_ministry',
     region: 'India',
-    pio: 'pio-jalshakti@gov.in',
-    faa: 'faa-jalshakti@gov.in',
+    pio: null,
+    faa: null,
   },
   {
     name: 'Ministry of Health and Family Welfare',
     kind: 'union_ministry',
     region: 'India',
-    pio: 'pio-mohfw@gov.in',
-    faa: 'faa-mohfw@gov.in',
+    pio: null,
+    faa: null,
   },
   {
     name: 'UP Department of Panchayati Raj',
     kind: 'state_department',
     region: 'Uttar Pradesh',
-    pio: 'pio-uppr@up.gov.in',
-    faa: 'faa-uppr@up.gov.in',
+    pio: null,
+    faa: null,
   },
   {
     name: 'Pune Municipal Corporation',
     kind: 'municipal_body',
     region: 'Pune',
-    pio: 'pio@punecorporation.org',
-    faa: 'faa@punecorporation.org',
+    pio: null,
+    faa: null,
   },
   {
     name: 'Kerala Water Authority',
     kind: 'psu',
     region: 'Kerala',
-    pio: 'pio@kwa.kerala.gov.in',
-    faa: 'faa@kwa.kerala.gov.in',
+    pio: null,
+    faa: null,
   },
 ];
 
@@ -361,9 +372,11 @@ async function main() {
       const regionId = regionIdOf(region, 'budget line');
       if (schemeId === undefined) throw new Error(`unknown scheme for budget line: ${scheme}`);
       const { rows } = await client.query<{ id: string }>(
+        // `sample`: these figures are illustrative (see above), and the UI badges every one of them.
         `INSERT INTO civic_catalogue.budget_line
-           (fy, scheme_id, region_id, level, allocated_be, revised_re, released, utilised, source_refs)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+           (fy, scheme_id, region_id, level, allocated_be, revised_re, released, utilised, source_refs,
+            provenance)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'sample') RETURNING id`,
         [
           fy,
           schemeId,

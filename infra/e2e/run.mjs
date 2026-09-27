@@ -10,8 +10,9 @@
  *
  *   pnpm infra:up && pnpm migrate && pnpm seed
  *   node packages/analytics/src/cli/migrate.ts
- *   CIVIC_SENTIMENT_PARTITIONS=8 CIVIC_TOPIC_COOLDOWN_SECONDS=3 pnpm dev:api &
- *   CIVIC_SENTIMENT_PARTITIONS=8 pnpm dev:worker &
+ *   pnpm ingest:run --fixtures        # sample GOs and job notifications, for the forum section
+ *   CIVIC_SENTIMENT_PARTITIONS=8 CIVIC_COMMENT_PARTITIONS=8 CIVIC_TOPIC_COOLDOWN_SECONDS=3 pnpm dev:api &
+ *   CIVIC_SENTIMENT_PARTITIONS=8 CIVIC_COMMENT_PARTITIONS=8 pnpm dev:worker &
  *   BASE=http://localhost:8080 COOLDOWN_SECONDS=3 pnpm e2e
  *
  * Exits non-zero on any failure, so it can gate a deployment.
@@ -520,6 +521,182 @@ ok(
   'privacy: erasure does not rewrite published aggregates (they hold no personal data)',
   (countryAfter.json?.total?.n ?? 0) >= 60,
   `n=${countryAfter.json?.total?.n}`,
+);
+
+// ── 9. The forum: located residents, a local GO, what they think ──
+console.log('\n--- forum ---');
+const located = await call('/v1/geo/resolve', {
+  method: 'POST',
+  body: { lat: 17.4119, lng: 78.4618 },
+});
+ok(
+  'geo: a point in Khairatabad resolves to the ward',
+  located.json?.region?.key === 'IN-TG-GHMC-khairatabad',
+  located.json?.region?.name,
+);
+ok('geo: the coordinate is not echoed back', !JSON.stringify(located.json).includes('17.41'));
+const ward = located.json.region;
+const ghmcId = ward.path[2];
+
+const residents = [];
+for (let i = 0; i < 30; i++) {
+  const fresh = await call('/v1/geo/resolve', {
+    method: 'POST',
+    body: { lat: 17.4119, lng: 78.4618 },
+  });
+  const r = await call('/v1/citizens', {
+    method: 'POST',
+    body: {
+      region_id: ward.id,
+      demographics: { age_band: '18-24', occupation_band: 'student' },
+      location_attestation: fresh.json.attestation,
+    },
+  });
+  if (r.status === 201) residents.push(r.json.access_token);
+}
+ok('forum: 30 located residents registered', residents.length === 30, `${residents.length}`);
+
+const wardTopics = await call(`/v1/topics?region_id=${ward.id}&limit=100`);
+const go = wardTopics.json?.items?.find((t) => t.title.startsWith('G.O.Ms.No.145'));
+ok(
+  'forum: the drains GO was put up for discussion, scoped to the city',
+  go?.jurisdiction_region_id === ghmcId,
+  go?.title?.slice(0, 40),
+);
+
+const outsider = await call(`/v1/topics/${go.id}/comments`, {
+  method: 'POST',
+  token: tokens[1],
+  idem: `outsider-${Date.now()}`,
+  body: { body: 'Drains matter everywhere.', parent_id: null },
+});
+ok(
+  'forum: a Lucknow resident cannot post on a Hyderabad GO',
+  outsider.status === 403 && outsider.json?.error?.code === 'not_local',
+  `${outsider.status}`,
+);
+
+const pii = await call(`/v1/topics/${go.id}/comments`, {
+  method: 'POST',
+  token: residents[0],
+  idem: `pii-${Date.now()}`,
+  body: { body: 'Call the engineer on 9876543210 about the drain.', parent_id: null },
+});
+ok(
+  'forum: a phone number is refused before publication',
+  pii.status === 422 && !JSON.stringify(pii.json).includes('9876543210'),
+  `${pii.status}`,
+);
+
+const opinions = [
+  'The drains near our colony overflow every monsoon. Desilt them before June.',
+  'We need jobs for local youth in this drain construction work, not outside contractors.',
+  'Publish the contractor list and completion dates ward by ward so we can check.',
+  'Garbage blocks the nala, that is why it floods. Clear it every month.',
+  'Students cannot reach college when the road floods. Fix drainage near bus stops.',
+];
+let commentsAccepted = 0;
+for (const [i, t] of residents.entries()) {
+  const r = await call(`/v1/topics/${go.id}/comments`, {
+    method: 'POST',
+    token: t,
+    idem: `forum-${Date.now()}-${i}`,
+    body: { body: `${opinions[i % opinions.length]} (resident ${i + 1})`, parent_id: null },
+  });
+  if (r.status === 202) commentsAccepted++;
+}
+ok(
+  'forum: every resident comment accepted onto the log',
+  commentsAccepted === 30,
+  `${commentsAccepted}`,
+);
+
+let thread = null;
+for (let i = 0; i < 40; i++) {
+  thread = await call(`/v1/topics/${go.id}/comments?sort=new&limit=50`);
+  if ((thread.json?.total ?? 0) >= 30) break;
+  await new Promise((r) => setTimeout(r, 1000));
+}
+ok(
+  'forum: the worker published them (Kafka → worker → Postgres)',
+  (thread.json?.total ?? 0) >= 30,
+  `${thread.json?.total}`,
+);
+const one = thread.json.items[0];
+ok(
+  'forum: comments carry the author ward, device confirmation and model labels',
+  one?.area === 'Khairatabad' && one?.located === true && one?.analysis !== null,
+  `${one?.area} ${one?.located}`,
+);
+
+const vote = await call(`/v1/topics/${go.id}/comments/${one.id}/vote`, {
+  method: 'PUT',
+  token: residents[1],
+});
+ok('forum: a resident can upvote', vote.json?.upvotes === 1, JSON.stringify(vote.json));
+
+const trending = await call(`/v1/trending?region_id=${ghmcId}`);
+const hot = trending.json?.items?.find((t) => t.topic_id === go.id);
+ok(
+  'forum: the GO is trending in Greater Hyderabad (Redis)',
+  (hot?.comments_24h ?? 0) >= 30,
+  `${hot?.comments_24h}`,
+);
+
+let digest = null;
+for (let i = 0; i < 20; i++) {
+  digest = await call(`/v1/topics/${go.id}/digest`);
+  if (digest.json?.digest) break;
+  await new Promise((r) => setTimeout(r, 1000));
+}
+ok(
+  'forum: a digest of what people think was built',
+  digest.json?.digest?.based_on_comments >= 10,
+  `${digest.json?.digest?.method}`,
+);
+
+let youth = null;
+for (let i = 0; i < 20; i++) {
+  youth = await call(`/v1/insights/cohort?cohort=youth&region_id=${ghmcId}`);
+  if (!youth.json?.suppressed) break;
+  await new Promise((r) => setTimeout(r, 1000));
+}
+ok(
+  'insights: youth in Greater Hyderabad clear k=25 (ClickHouse)',
+  youth.json?.suppressed === false && youth.json?.participants >= 25,
+  `${youth.json?.participants}`,
+);
+ok(
+  'insights: what they raise is ranked',
+  (youth.json?.needs?.length ?? 0) > 0,
+  youth.json?.needs
+    ?.slice(0, 3)
+    .map((n) => n.need)
+    .join(','),
+);
+const farmersHere = await call(`/v1/insights/cohort?cohort=farmers&region_id=${ward.id}`);
+ok(
+  'insights: a cohort below k is suppressed, not shown small',
+  farmersHere.json?.suppressed === true && farmersHere.json?.participants === null,
+);
+
+const jobs = await call(`/v1/jobs?region_id=${ward.id}`);
+ok(
+  'jobs: open notifications that apply to the ward',
+  (jobs.json?.open_notifications ?? 0) > 0,
+  `${jobs.json?.open_notifications} open, ${jobs.json?.stated_vacancies}+ posts`,
+);
+
+const leaver = residents[29];
+const theirs = (await call('/v1/me/comments', { token: leaver })).json?.items?.[0];
+await call('/v1/me', { method: 'DELETE', token: leaver });
+const blanked = (await call(`/v1/topics/${go.id}/comments?sort=new&limit=50`)).json?.items?.find(
+  (c) => c.id === theirs?.id,
+);
+ok(
+  'privacy: erasure removes the person’s comments from the thread',
+  theirs !== undefined && blanked === undefined,
+  theirs?.id,
 );
 
 console.log(`\n${'='.repeat(60)}\n${passes} passed, ${failures} failed\n${'='.repeat(60)}`);

@@ -9,7 +9,7 @@
     "node": ">=22.18.0"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/web/tsconfig.json && tsc -p apps/mobile/tsconfig.json",
     "test": "node --test --test-reporter=spec \"packages/*/test/**/*.test.ts\" \"services/*/test/**/*.test.ts\"",
     "test:integration": "CIVIC_INTEGRATION=1 node --test --test-reporter=spec \"services/*/test/integration/*.test.ts\" \"packages/*/test/integration/*.test.ts\"",
     "format": "prettier --write .",

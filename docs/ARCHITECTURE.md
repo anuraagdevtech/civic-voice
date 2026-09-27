@@ -8,15 +8,17 @@ privacy and Sybil-resistance treated as first-class constraints rather than add-
 
 ---
 
-## 1. The three products in one platform
+## 1. The products in one platform
 
 | Product | What a citizen does | What the platform must guarantee |
 | --- | --- | --- |
 | **Mood tracking** | Records a 5-point mood + intensity + optional reason on a government decision, policy or scheme | One opinion per verified citizen per topic; instant read-your-write; no de-anonymisation from aggregates |
 | **RTI tracking** | Files / logs an RTI request against a public authority and tracks it through the statutory clock | Statutory deadlines computed correctly (RTI Act 2005); public responses become citable evidence |
 | **Tax utilisation** | Sees allocated → released → utilised money for a scheme in their own district, per capita | Numbers are attributable to a source document; sentiment can be correlated with delivery |
+| **Discussion** | Comments on new GOs, projects and news that concern where they live, raises local issues, reads what residents think and say needs to be done | Only residents of the place speak on it; no personal information is published; a thread is one shard (ADR-0008 – 0012) |
+| **Insights, jobs, money** | Sees what youth or farmers raise, the government jobs open to them, and budgets, prices and unemployment with sources | Cohorts k-gated on distinct voices; every figure sourced; samples labelled as samples |
 
-The three are joined by two shared spines: the **region hierarchy** and the **topic graph**.
+They are joined by two shared spines: the **region hierarchy** and the **topic graph**.
 A district's mood on a scheme, the RTI responses about that scheme, and the rupees actually
 spent on it in that district are all reachable from one place. That join is the product.
 
@@ -181,3 +183,15 @@ test suite runs with no Docker daemon, which is what keeps CI fast enough to be 
 - [TRUST.md](./TRUST.md) — verification tiers and Sybil resistance
 - [RTI.md](./RTI.md) — the statutory clock, appeal ladder, and how it is modelled
 - [adr/](./adr) — the decisions, and what we gave up for them
+
+## 11. The forum, in one paragraph
+
+The ingestor ([ADR-0012](adr/0012-polite-precise-ingestion.md)) turns government documents into
+topics scoped to the place they concern. A resident's comment is checked synchronously (do you live
+there, is there personal information in it, are you over your limit) and appended to the log like an
+opinion; the worker labels it with the in-house model, escalating uncertain ones to a large model
+within a budget ([ADR-0011](adr/0011-in-house-model-first.md)), stores it on its **topic's** shard
+([ADR-0008](adr/0008-comments-on-topic-shards.md)), projects it to ClickHouse with nothing that can be
+joined back to it, bumps trending in Redis, and rebuilds the topic's digest when it has grown. Who
+counts as a resident comes from the region tree and, optionally, a device location that is used once
+and kept nowhere ([ADR-0010](adr/0010-where-people-live.md)).

@@ -311,58 +311,84 @@ export function runForumContract(name: string, open: () => Promise<Repositories>
         const first = await repos.documents.upsertDocuments([d]);
         assert.equal(first.inserted, 1);
         const id = first.ids.get(d.content_hash) as number;
-        await repos.documents.linkTopic(id, 42);
+        const topic = await repos.catalogue.createTopic({
+          kind: 'government_order',
+          jurisdiction_region_id: 1,
+          title: 'An order',
+          summary: null,
+          effective_from: null,
+          source_refs: [],
+        });
+        await repos.documents.linkTopic(id, topic.id);
         const again = await repos.documents.upsertDocuments([
           { ...d, title: 'An order (corrigendum)', source_id: 'mirror', source_name: 'A mirror' },
         ]);
         assert.equal(again.updated, 1);
         const row = await repos.documents.getDocument(id);
         assert.equal(row?.title, 'An order (corrigendum)');
-        assert.equal(row?.topic_id, 42);
+        assert.equal(row?.topic_id, topic.id);
         assert.equal(row?.source_id, 'tg-goir', 'attribution stays with the first source');
       } finally {
         await repos.close();
       }
     });
 
+    /** Real catalogue regions (both implementations are seeded with the geography), by key. */
+    const regions = async (repos: Repositories) => {
+      const ids: Record<string, number> = {};
+      for (const key of [
+        'IN',
+        'IN-TG',
+        'IN-TG-GHMC',
+        'IN-TG-GHMC-khairatabad',
+        'IN-TG-GHMC-uppal',
+      ]) {
+        const r = await repos.catalogue.regionByKey(key);
+        assert.ok(r, `region ${key} must be seeded`);
+        ids[key] = r.id;
+      }
+      return ids as Record<
+        'IN' | 'IN-TG' | 'IN-TG-GHMC' | 'IN-TG-GHMC-khairatabad' | 'IN-TG-GHMC-uppal',
+        number
+      >;
+    };
+
     test('a region sees what is scoped to its path, and what names it — not its neighbours', async () => {
       const repos = await open();
       try {
-        // Needs region rows for the foreign keys; Postgres covers this path in the seeded e2e run.
-        if (name === 'postgres') return;
-        // Region ids unique to this run, so a shared database's other rows cannot interfere.
-        const base = 7_000_000 + Math.floor(Math.random() * 1_000_000) * 10;
-        const [india, tg, ghmc, ward, otherWard] = [base, base + 1, base + 2, base + 3, base + 4];
-        const mine = [india, tg, ghmc, ward];
-        const { ids } = await repos.documents.upsertDocuments([
+        const r = await regions(repos);
+        const run = `run-${uuidv7()}`;
+        const city = [r['IN'], r['IN-TG'], r['IN-TG-GHMC']];
+        await repos.documents.upsertDocuments([
           doc({
-            content_hash: `a${base}`,
-            title: 'City drains',
-            primary_region_id: ghmc,
-            primary_region_path: [india, tg, ghmc],
-            jurisdiction_region_id: tg,
+            content_hash: `${run}-a`,
+            title: `${run} City drains`,
+            primary_region_id: r['IN-TG-GHMC'],
+            primary_region_path: city,
+            jurisdiction_region_id: r['IN-TG'],
           }),
           doc({
-            content_hash: `b${base}`,
-            title: 'Other ward road',
-            primary_region_id: otherWard,
-            primary_region_path: [india, tg, ghmc, otherWard],
-            jurisdiction_region_id: tg,
+            content_hash: `${run}-b`,
+            title: `${run} Other ward road`,
+            primary_region_id: r['IN-TG-GHMC-uppal'],
+            primary_region_path: [...city, r['IN-TG-GHMC-uppal']],
+            jurisdiction_region_id: r['IN-TG'],
           }),
           doc({
-            content_hash: `c${base}`,
-            title: 'Names my ward',
-            primary_region_id: tg,
-            primary_region_path: [india, tg],
-            jurisdiction_region_id: tg,
-            geo_region_ids: [ward],
+            content_hash: `${run}-c`,
+            title: `${run} Names my ward`,
+            primary_region_id: r['IN-TG'],
+            primary_region_path: [r['IN'], r['IN-TG']],
+            jurisdiction_region_id: r['IN-TG'],
+            geo_region_ids: [r['IN-TG-GHMC-khairatabad']],
           }),
         ]);
-        void ids;
-        const titles = (await repos.documents.listForRegion(mine, { limit: 10 }))
+        const mine = [...city, r['IN-TG-GHMC-khairatabad']];
+        const titles = (await repos.documents.listForRegion(mine, { limit: 100 }))
           .map((d) => d.title)
+          .filter((t) => t.startsWith(run))
           .sort();
-        assert.deepEqual(titles, ['City drains', 'Names my ward']);
+        assert.deepEqual(titles, [`${run} City drains`, `${run} Names my ward`]);
       } finally {
         await repos.close();
       }
@@ -371,26 +397,56 @@ export function runForumContract(name: string, open: () => Promise<Repositories>
     test('open jobs: closing today or later, or undated and recent', async () => {
       const repos = await open();
       try {
-        if (name === 'postgres') return;
+        const r = await regions(repos);
+        const run = `run-${uuidv7()}`;
+        const at = {
+          jurisdiction_region_id: r['IN-TG'],
+          primary_region_id: r['IN-TG'],
+          primary_region_path: [r['IN'], r['IN-TG']],
+        };
         await repos.documents.upsertDocuments([
           doc({
+            ...at,
+            content_hash: `${run}-1`,
             kind: 'job_notification',
-            title: 'Open',
+            title: `${run} Open`,
             closing_on: '2026-10-30',
             vacancies: 100,
           }),
           doc({
+            ...at,
+            content_hash: `${run}-2`,
             kind: 'job_notification',
-            title: 'Closed',
+            title: `${run} Closed`,
             closing_on: '2026-09-01',
             vacancies: 50,
           }),
-          doc({ kind: 'job_notification', title: 'Undated recent', published_on: '2026-09-15' }),
-          doc({ kind: 'job_notification', title: 'Undated stale', published_on: '2026-05-01' }),
-          doc({ kind: 'government_order', title: 'Not a job' }),
+          doc({
+            ...at,
+            content_hash: `${run}-3`,
+            kind: 'job_notification',
+            title: `${run} Undated recent`,
+            published_on: '2026-09-15',
+          }),
+          doc({
+            ...at,
+            content_hash: `${run}-4`,
+            kind: 'job_notification',
+            title: `${run} Undated stale`,
+            published_on: '2026-05-01',
+          }),
+          doc({
+            ...at,
+            content_hash: `${run}-5`,
+            kind: 'government_order',
+            title: `${run} Not a job`,
+          }),
         ]);
-        const open = (await repos.documents.openJobs([1], '2026-09-27')).map((d) => d.title).sort();
-        assert.deepEqual(open, ['Open', 'Undated recent']);
+        const open = (await repos.documents.openJobs([r['IN'], r['IN-TG']], '2026-09-27'))
+          .map((d) => d.title)
+          .filter((t) => t.startsWith(run))
+          .sort();
+        assert.deepEqual(open, [`${run} Open`, `${run} Undated recent`]);
       } finally {
         await repos.close();
       }

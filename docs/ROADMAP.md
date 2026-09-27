@@ -17,7 +17,12 @@ left for someone to discover.
 | Tax utilisation | BE → RE → released → utilised, across a citizen's region path, per capita against the right population, every figure sourced. |
 | Sharding | 1024 vshards by citizen id, a router that cannot express a cross-shard query, a separate maintenance entry point. |
 | Privacy | Band-only demographics, per-topic pseudonyms, blind indexes, crypto-shredding erasure, type-enforced identity boundary. |
-| Clients | Web PWA (~92 kB gzipped) with an offline write queue; Expo mobile app on the same SDK. |
+| Discussion forum | Comments on topic-keyed shards, one-level replies, votes, reports, author deletion and erasure; locals-only participation; trending per region; digests of what people think and what needs to be done. Verified end to end through Kafka, the worker, Postgres, Redis and ClickHouse. |
+| Comment ML | In-house multilingual sentiment, 14 needs and suggestion detection with calibrated confidence; budgeted escalation to a large model; evaluated by cross-validation against baselines. |
+| Where people live | Cities as regions; 145 real GHMC ward boundaries; location resolved once and never kept; device-confirmed home regions. |
+| Public documents | Polite ingestion framework for central, Telangana and Andhra Pradesh sources; GO/gazette/vacancy/amount extraction; precision-first geo-tagging; discussable documents become topics. |
+| Jobs, indicators, cohorts | Open government job notifications with stated vacancies; socio-economic indicators with sources; youth/farmer/women/student insights behind the k-gate. |
+| Clients | Web PWA (~103 kB gzipped) with an offline write queue and the full forum; Expo mobile app on the same SDK with onboarding and the Near me thread. |
 | Adapters | Postgres, Redis, Kafka/Redpanda and ClickHouse, each with an in-memory twin held to one conformance suite. |
 
 ## Stubbed — the shape is right, the integration is not there
@@ -38,6 +43,18 @@ is what makes tier 0 cost anything to forge.
 **RTI disclosure pipeline.** The `disclosure` table, content addressing and the search index exist.
 Upload, OCR for scanned replies, and crowd verification do not.
 
+**Live scraping.** Every source in `packages/ingest/src/sources.ts` has selectors written against
+its expected format and a synthetic fixture, and none has been checked against the live site: the
+build environment's network policy did not allow government or news hosts. Run
+`pnpm ingest:check --live` from a network that does, fix what it reports, capture real fixtures with
+`--save-fixtures`, and fill in each source's `verified` entry.
+
+**Moderation console.** Comments held by the automatic checks or by reports wait, invisible, for a
+moderator. The queue, the reviewer tooling and the author's appeal are not built (ADR-0009).
+
+**Indicator figures.** The indicator catalogue names real sources, but the values loaded in
+development are samples, badged as such. Load published figures with `pnpm indicators:load <file>`.
+
 **Catalogue datasets.** The seed carries a representative slice of real Indian geography and central
 schemes. Production needs the full LGD, Census and ECI datasets (~800k regions), and an ingestion
 pipeline for budget documents. The `codes` column exists so those join without fuzzy name matching.
@@ -49,8 +66,11 @@ pipeline for budget documents. The `codes` column exists so those join without f
   rate limit and the audit log around it are not. This is a deliberately gated surface and should
   not ship casually.
 - **Authority compliance scorecards.** The rollup and the query exist; no endpoint or UI yet.
-- **Moderation.** Free-text is kept off the ingest path precisely so this can be added later without
-  touching the write path. Reason codes are a closed vocabulary today.
+- **Ward boundaries beyond Greater Hyderabad.** Location lookup covers GHMC only; elsewhere it says
+  "not mapped yet" and the person picks from the list.
+- **Mobile parity.** Device-location confirmation (needs `expo-location`), voting, reporting, raising
+  issues, insights, jobs and indicators are web-only for now.
+- **OCR** for scanned GO PDFs, which are flagged `needs_ocr` and indexed by title only.
 - **Localisation.** The 22 scheduled languages are modelled throughout (`locale`, `names`, `titles`);
   no translations are loaded and the UI strings are not extracted.
 - **Rebalancing tooling.** The vshard model supports moving a shard; the operational runbook and
@@ -67,6 +87,12 @@ pipeline for budget documents. The `codes` column exists so those join without f
 - **Rounding does not defeat a determined differencing attack.** Counts above 1,000 are rounded to
   the nearest ten, which raises the cost of comparing the same slice across days; it does not make
   it impossible, and [PRIVACY.md §3](PRIVACY.md) says so rather than implying otherwise.
+- **The comment model is evaluated on 241 seed examples,** not on real forum traffic. Sentiment
+  macro-F1 is 0.62 against a 0.27 baseline; needs micro-F1 0.79, mostly from the lexicon. Real
+  traffic needs a labelled sample and re-evaluation before its labels are relied on (ADR-0011).
+- **The GHMC ward boundaries are a 2018 OpenStreetMap snapshot,** 145 of 150 wards (ADR-0010).
+- **The seed's budget lines are illustrative,** stored as `sample` and badged; RTI authorities carry
+  no PIO/FAA contacts until they are loaded from each authority's published list.
 - **The Terraform is a sketch.** It records shape and sizing, not a deployable root module.
 - **The capacity model rests on measured and assumed inputs.** `pnpm loadtest` measures the one that
   matters most (per-write service time) and fails loudly when it drifts; the demand assumptions are

@@ -134,3 +134,22 @@ careless `log.info({ citizen })` cannot exfiltrate a row.
 - **RTI Act 2005 §8(1)(j)** — the platform publishes public-authority information, never
   personal information of filers; the filer's identity is never attached to a published
   disclosure.
+
+## 9. Comments, location and the forum
+
+- **Comments are public; their authors are not.** A comment appears under a handle derived from the
+  per-topic pseudonym (§2): stable within a thread, unlinkable across threads. There is no profile
+  page, because the only link between one person's threads is their own index (ADR-0008).
+- **Personal information is refused before it is accepted** — Aadhaar, PAN, phone numbers, email,
+  UPI ids, bank accounts — and the refusal never echoes the match (ADR-0009).
+- **The analytics projection of a comment** carries needs, tone and demographic bands, and nothing
+  that can be joined back to the comment: no body, no comment id, no pseudonym, time rounded to the
+  hour, and keyed hashes for de-duplication and for counting distinct voices. Cohort insights (youth,
+  farmers) are k-gated on distinct voices, with complementary suppression of the "everyone else"
+  comparison.
+- **A location is used once and never kept** — rounded to ~110 m on the device and again on the
+  server, sent in a request body, redacted from logs, and discarded after the ward lookup (ADR-0010).
+- **Erasure reaches comments.** `DELETE /v1/me` blanks every comment the person wrote, in every
+  thread, before tombstoning the account; an interrupted erasure is completed by retrying.
+- **The large model is a processor.** When `ANTHROPIC_API_KEY` is set, uncertain comments and digest
+  samples — already public, and free of refused personal information — are sent to it (ADR-0011).

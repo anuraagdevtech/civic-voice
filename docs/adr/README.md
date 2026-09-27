@@ -13,3 +13,8 @@ preference, and the next person cannot tell whether it still holds.
 | [0005](./0005-tiered-participation-not-gated.md) | Label participation by tier; never block it | Accepted |
 | [0006](./0006-typescript-monorepo-with-in-memory-adapters.md) | TypeScript monorepo with in-memory adapters | Accepted |
 | [0007](./0007-no-crossshard-queries.md) | Forbid cross-shard queries in the router itself | Accepted |
+| [0008](./0008-comments-on-topic-shards.md) | Comments live on their topic's shard and go through the log | Accepted |
+| [0009](./0009-moderation.md) | Refuse personal information synchronously; hold, never silently drop | Accepted |
+| [0010](./0010-where-people-live.md) | Local questions for local people: cities, wards, a location never kept | Accepted |
+| [0011](./0011-in-house-model-first.md) | An in-house model on every comment; a large model where it is unsure | Accepted |
+| [0012](./0012-polite-precise-ingestion.md) | Scrape politely, extract precisely, scope no narrower than the evidence | Accepted |
