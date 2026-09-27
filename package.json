@@ -1,0 +1,29 @@
+{
+  "name": "civic-voice",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Civic Voice — public sentiment, RTI tracking and tax-utilisation transparency at national scale.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test --test-reporter=spec \"packages/*/test/**/*.test.ts\" \"services/*/test/**/*.test.ts\"",
+    "test:integration": "CIVIC_INTEGRATION=1 node --test --test-reporter=spec \"services/*/test/integration/*.test.ts\" \"packages/*/test/integration/*.test.ts\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d --wait",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down -v",
+    "migrate": "node packages/db/src/cli/migrate.ts",
+    "seed": "node packages/db/src/cli/seed.ts",
+    "dev:api": "node --watch services/api/src/main.ts",
+    "dev:worker": "node --watch services/worker/src/main.ts",
+    "dev:web": "pnpm --filter @civic-voice/web dev",
+    "loadtest": "node infra/loadtest/run.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

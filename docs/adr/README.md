@@ -1,0 +1,15 @@
+# Architecture Decision Records
+
+Each record states the decision, the forces behind it, and **what we gave up**. The last part
+is the reason these exist: a decision without a stated cost is not a decision, it is a
+preference, and the next person cannot tell whether it still holds.
+
+| # | Decision | Status |
+| --- | --- | --- |
+| [0001](./0001-shard-by-citizen-not-region.md) | Shard OLTP by citizen, not region | Accepted |
+| [0002](./0002-precompute-marginals-not-crossproducts.md) | Pre-compute demographic marginals, not cross-products | Accepted |
+| [0003](./0003-event-log-as-commit-point.md) | The event log is the write commit point | Accepted |
+| [0004](./0004-crypto-shredding-for-erasure.md) | Erasure by crypto-shredding, not row deletion | Accepted |
+| [0005](./0005-tiered-participation-not-gated.md) | Label participation by tier; never block it | Accepted |
+| [0006](./0006-typescript-monorepo-with-in-memory-adapters.md) | TypeScript monorepo with in-memory adapters | Accepted |
+| [0007](./0007-no-crossshard-queries.md) | Forbid cross-shard queries in the router itself | Accepted |

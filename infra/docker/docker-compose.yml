@@ -1,0 +1,90 @@
+# Local development stack. Production topology is in infra/k8s/ and infra/terraform/.
+#
+# Deliberately single-node: this exists so a developer can run the real adapters against the real
+# engines. It is not a scale model. Sharding, replication and the 64-shard Redis cluster are
+# expressed in the Kubernetes manifests, not here.
+name: civic-voice
+
+services:
+  # Two logical Postgres roles on one engine locally: the sharded citizen store and the catalogue.
+  # In production these are 64 sharded clusters plus one replicated catalogue (docs/SCALING.md §6).
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: civic
+      POSTGRES_PASSWORD: civic
+      POSTGRES_DB: civic
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+    ports: ['5432:5432']
+    volumes: ['pgdata:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U civic -d civic']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --save
+      - ''
+      - --appendonly
+      - 'no'
+      - --maxmemory-policy
+      - allkeys-lru
+    ports: ['6379:6379']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Redpanda speaks the Kafka protocol; one binary instead of Kafka + ZooKeeper/KRaft locally.
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda
+      - start
+      - --smp=1
+      - --memory=1G
+      - --overprovisioned
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr=PLAINTEXT://127.0.0.1:9092
+    ports: ['9092:9092']
+    healthcheck:
+      test: ['CMD-SHELL', 'rpk cluster health | grep -q "Healthy:.*true"']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    environment:
+      CLICKHOUSE_USER: civic
+      CLICKHOUSE_PASSWORD: civic
+      CLICKHOUSE_DB: civic
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
+    ports: ['8123:8123', '9000:9000']
+    # No `ulimits:` here on purpose. ClickHouse wants a high nofile limit, but setting rlimits needs
+    # privileges a developer's container runtime may not have, and a dev stack that refuses to start
+    # is worse than an untuned one. The production limit is set in infra/k8s/clickhouse.yaml.
+    volumes:
+      # The same tiered storage policy the production schema's TTL targets, backed by a local disk
+      # instead of object storage — so the DDL is identical in both places.
+      - ./clickhouse/storage.xml:/etc/clickhouse-server/config.d/storage.xml:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8123/ping | grep -q Ok']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
