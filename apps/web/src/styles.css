@@ -807,8 +807,50 @@ input[type='text'] {
     grid-template-columns: 1fr auto;
     row-gap: 2px;
   }
-  .viz-bar-track {
+  .viz-bar-track,
+  .viz-dumb-track {
     grid-column: 1 / -1;
     order: 3;
   }
+}
+
+/* Dumbbell: two measures in one unit on one axis; the link between the dots is the gap. */
+.viz-dumb-track {
+  position: relative;
+  display: block;
+  height: 16px;
+  border-left: 1px solid var(--border);
+}
+.viz-dumb-link {
+  position: absolute;
+  top: 7px;
+  height: 2px;
+  background: var(--viz-muted);
+}
+.viz-dot {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--c);
+  /* The surface ring keeps overlapping dots legible. */
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.viz-swatch.round {
+  border-radius: 50%;
+}
+.viz-table {
+  overflow-x: auto;
+}
+.viz-table label {
+  white-space: nowrap;
+}
+.viz-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
+  padding-bottom: 8px;
 }

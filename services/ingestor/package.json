@@ -11,6 +11,7 @@
     "@civic-voice/db": "workspace:*",
     "@civic-voice/geo": "workspace:*",
     "@civic-voice/ingest": "workspace:*",
+    "@civic-voice/nlp": "workspace:*",
     "@civic-voice/observability": "workspace:*",
     "zod": "^3.24.1"
   },

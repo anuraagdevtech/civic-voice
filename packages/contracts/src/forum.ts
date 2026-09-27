@@ -5,9 +5,17 @@
  * every side of the wire.
  */
 import { z } from 'zod';
-import { DOCUMENT_KINDS, NEEDS, PROVENANCE_KINDS, REGION_KINDS } from './enums.ts';
+import {
+  DEMOGRAPHIC_DIMENSIONS,
+  DOCUMENT_KINDS,
+  NEEDS,
+  PROVENANCE_KINDS,
+  REGION_KINDS,
+} from './enums.ts';
+import { FISCAL_STAGES, PROGRAMME_SECTORS } from './finance.ts';
 import {
   demographicsSchema,
+  moodBucketSchema,
   isoDate,
   isoDateTime,
   regionId,
@@ -342,3 +350,62 @@ export const cohortInsightSchema = z.object({
   method: z.string(),
 });
 export type CohortInsight = z.infer<typeof cohortInsightSchema>;
+
+// ─────────────────────────────── Opinion against allocation ───────────────────────────────
+
+/**
+ * For each programme sector of one government: its share of that government's programme spending,
+ * its share of what residents raise in comments, and residents' mood on that government's own
+ * decisions in the sector — optionally by a demographic dimension. For researchers, so every figure
+ * is gated, every method stated, and nothing causal is claimed.
+ */
+export const sectorInsightRowSchema = z.object({
+  sector: z.enum(PROGRAMME_SECTORS),
+  label: z.string(),
+  spending: z.object({
+    /** ₹ crore; null when the budget carries no line for this sector. */
+    amount: z.number().nullable(),
+    share_of_programmes: z.number().nullable(),
+    previous_amount: z.number().nullable(),
+  }),
+  attention: z.object({
+    /** Null when fewer than k distinct voices raised it, or complementary suppression withheld it. */
+    voices: z.number().int().nullable(),
+    comments: z.number().int().nullable(),
+    /** Of all sector-tagged mentions in the window, so it is comparable with the spending share. */
+    share: z.number().nullable(),
+    negative_share: z.number().nullable(),
+    suppressed: z.boolean(),
+  }),
+  mood: z.object({
+    /** This government's live decisions tagged with the sector. */
+    topics: z.number().int(),
+    /** Of those, how many had enough opinions to contribute at all. */
+    topics_counted: z.number().int(),
+    total: moodBucketSchema,
+    buckets: z.array(moodBucketSchema),
+  }),
+  /** Attention share minus spending share, in share points: positive when raised more than funded. */
+  attention_minus_spending: z.number().nullable(),
+});
+export type SectorInsightRow = z.infer<typeof sectorInsightRowSchema>;
+
+export const sectorInsightSchema = z.object({
+  region_id: regionId,
+  region_name: z.string(),
+  fy: z.string().nullable(),
+  stage: z.enum(FISCAL_STAGES).nullable(),
+  window_days: z.number().int().positive(),
+  dimension: z.enum(DEMOGRAPHIC_DIMENSIONS).nullable(),
+  tier: verificationTierSchema,
+  k: z.number().int().positive(),
+  sectors: z.array(sectorInsightRowSchema),
+  /** Needs people raise that no budget head answers (corruption, environment), and how often. */
+  unmapped: z.array(
+    z.object({ need: z.enum(NEEDS), label: z.string(), comments: z.number().int().nullable() }),
+  ),
+  provenance: z.array(z.enum(PROVENANCE_KINDS)),
+  sources: z.array(z.object({ name: z.string(), url: z.string().url() })),
+  method: z.array(z.string()),
+});
+export type SectorInsight = z.infer<typeof sectorInsightSchema>;

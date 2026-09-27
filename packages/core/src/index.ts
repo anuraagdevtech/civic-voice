@@ -8,5 +8,6 @@ export * from './mood.ts';
 export * from './pseudonym.ts';
 export * from './rollup.ts';
 export * from './rti.ts';
+export * from './sectors.ts';
 export * from './time.ts';
 export * from './trust.ts';

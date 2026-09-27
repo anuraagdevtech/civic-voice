@@ -1,6 +1,7 @@
 import type {
   Demographics,
   Locale,
+  ProgrammeSector,
   RegionBasis,
   RtiState,
   VerificationTier,
@@ -315,6 +316,7 @@ export class MemoryCatalogueRepository implements CatalogueRepository {
       summary: input.summary,
       effective_from: input.effective_from,
       source_refs: [...input.source_refs],
+      sector: input.sector ?? null,
     };
     this.topics.set(id, row);
     return { ...row };
@@ -370,6 +372,34 @@ export class MemoryCatalogueRepository implements CatalogueRepository {
     return [...this.quarantine.values()].filter(
       (q) => q.topic_id === topicId && q.region_id === regionId && q.dim === dim,
     );
+  }
+
+  async quarantinedBucketsForTopics(
+    topicIds: readonly number[],
+    regionId: number,
+    dim: number,
+  ): Promise<QuarantineRow[]> {
+    const wanted = new Set(topicIds);
+    return [...this.quarantine.values()]
+      .filter((q) => wanted.has(q.topic_id) && q.region_id === regionId && q.dim === dim)
+      .map((q) => ({ ...q }));
+  }
+
+  async sectorTopics(
+    jurisdictionRegionId: number,
+    limit: number,
+  ): Promise<Array<{ id: number; sector: ProgrammeSector }>> {
+    return [...this.topics.values()]
+      .filter(
+        (t) =>
+          t.jurisdiction_region_id === jurisdictionRegionId &&
+          t.sector != null &&
+          t.status !== 'proposed' &&
+          t.status !== 'withdrawn',
+      )
+      .sort((a, b) => b.id - a.id)
+      .slice(0, limit)
+      .map((t) => ({ id: t.id, sector: t.sector as ProgrammeSector }));
   }
 
   async addQuarantine(row: QuarantineRow & { detail?: string }): Promise<void> {

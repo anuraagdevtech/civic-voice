@@ -8,6 +8,7 @@ import type {
   Locale,
   Mood,
   Need,
+  ProgrammeSector,
   ProvenanceKind,
   ReasonCode,
   RegionBasis,
@@ -155,6 +156,8 @@ export interface TopicRow {
   summary: string | null;
   effective_from: string | null;
   source_refs: string[];
+  /** The spending head the topic is about; absent or null when none fits. */
+  sector?: ProgrammeSector | null;
 }
 
 export interface AuthorityRow {
@@ -204,6 +207,7 @@ export interface NewTopic {
   source_refs: string[];
   authority_id?: number | null;
   scheme_id?: number | null;
+  sector?: ProgrammeSector | null;
 }
 
 /**
@@ -252,6 +256,20 @@ export interface CatalogueRepository {
   /** Insert or replace figures by (region, year, stage, category): a re-published figure replaces the old. */
   upsertFiscalLines(rows: readonly FiscalLineRow[]): Promise<void>;
   quarantinedBuckets(topicId: number, regionId: number, dim: number): Promise<QuarantineRow[]>;
+  /** The same, for many topics in one read — what a sector-wide slice needs. */
+  quarantinedBucketsForTopics(
+    topicIds: readonly number[],
+    regionId: number,
+    dim: number,
+  ): Promise<QuarantineRow[]>;
+  /**
+   * A government's own decisions that have a sector: live topics whose jurisdiction is exactly this
+   * region, newest first. Bounded by `limit`, so a sector-wide read never grows with the catalogue.
+   */
+  sectorTopics(
+    jurisdictionRegionId: number,
+    limit: number,
+  ): Promise<Array<{ id: number; sector: ProgrammeSector }>>;
   addQuarantine(row: QuarantineRow & { detail?: string }): Promise<void>;
 }
 

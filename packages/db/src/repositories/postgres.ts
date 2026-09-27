@@ -1,4 +1,10 @@
-import type { Locale, Mood, RtiState, VerificationTier } from '@civic-voice/contracts';
+import type {
+  Locale,
+  Mood,
+  ProgrammeSector,
+  RtiState,
+  VerificationTier,
+} from '@civic-voice/contracts';
 import {
   decodeDemographics,
   decodeReasonCode,
@@ -476,6 +482,7 @@ function toTopic(row: Row): TopicRow {
       row['summary'] === null || row['summary'] === undefined ? null : String(row['summary']),
     effective_from: asDate(row['effective_from']),
     source_refs: (row['source_refs'] ?? []) as string[],
+    sector: (row['sector'] ?? null) as ProgrammeSector | null,
   };
 }
 
@@ -598,8 +605,8 @@ export class PgCatalogueRepository implements CatalogueRepository {
       const { rows } = await db.query<Row>(
         `INSERT INTO civic_catalogue.topic
            (kind, status, jurisdiction_region_id, authority_id, scheme_id, title, summary,
-            effective_from, source_refs)
-         VALUES ($1, $9, $2, $3, $4, $5, $6, $7, $8)
+            effective_from, source_refs, sector)
+         VALUES ($1, $9, $2, $3, $4, $5, $6, $7, $8, $10)
          RETURNING *`,
         [
           input.kind,
@@ -611,6 +618,7 @@ export class PgCatalogueRepository implements CatalogueRepository {
           input.effective_from,
           JSON.stringify(input.source_refs),
           input.status ?? 'active',
+          input.sector ?? null,
         ],
       );
       return toTopic(rows[0] as Row);
@@ -732,6 +740,47 @@ export class PgCatalogueRepository implements CatalogueRepository {
         dim: Number(row['dim']),
         bucket: String(row['bucket']),
         reason: String(row['reason']),
+      }));
+    });
+  }
+
+  async quarantinedBucketsForTopics(
+    topicIds: readonly number[],
+    regionId: number,
+    dim: number,
+  ): Promise<QuarantineRow[]> {
+    if (topicIds.length === 0) return [];
+    return this.router.catalogue(async (db) => {
+      const { rows } = await db.query<Row>(
+        `SELECT topic_id, region_id, dim, bucket, reason FROM civic_catalogue.aggregate_quarantine
+         WHERE topic_id = ANY($1::bigint[]) AND region_id = $2 AND dim = $3`,
+        [[...topicIds], regionId, dim],
+      );
+      return rows.map((row) => ({
+        topic_id: Number(row['topic_id']),
+        region_id: Number(row['region_id']),
+        dim: Number(row['dim']),
+        bucket: String(row['bucket']),
+        reason: String(row['reason']),
+      }));
+    });
+  }
+
+  async sectorTopics(
+    jurisdictionRegionId: number,
+    limit: number,
+  ): Promise<Array<{ id: number; sector: ProgrammeSector }>> {
+    return this.router.catalogue(async (db) => {
+      const { rows } = await db.query<Row>(
+        `SELECT id, sector FROM civic_catalogue.topic
+         WHERE jurisdiction_region_id = $1 AND sector IS NOT NULL
+           AND status NOT IN ('proposed', 'withdrawn')
+         ORDER BY id DESC LIMIT $2`,
+        [jurisdictionRegionId, limit],
+      );
+      return rows.map((r) => ({
+        id: Number(r['id']),
+        sector: String(r['sector']) as ProgrammeSector,
       }));
     });
   }

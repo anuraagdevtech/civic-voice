@@ -10,7 +10,6 @@
  */
 import { z } from 'zod';
 import { PROVENANCE_KINDS, type Need } from './enums.ts';
-import { regionId } from './schemas.ts';
 
 /**
  * Budget estimate (presented with the budget), revised estimate (a year later), actual (audited
@@ -54,11 +53,11 @@ export const OTHER_RECEIPT_CATEGORIES = [
 export type OtherReceiptCategory = (typeof OTHER_RECEIPT_CATEGORIES)[number];
 
 /**
- * Where the money goes. The first twelve are programmes a citizen can have a view on; the last four
- * are committed or pass-through — interest on past borrowing, pensions, money handed to another
- * government to spend — and are shown, because they are most of the gap, but no topic is "about" them.
+ * Where the money goes: programmes a citizen can have a view on — and a topic can be about — then the
+ * committed or pass-through heads: interest on past borrowing, pensions, money handed to another
+ * government to spend. Those are shown, because they are most of the gap, but no topic is "about" them.
  */
-export const SPENDING_SECTORS = [
+export const PROGRAMME_SECTORS = [
   'infrastructure',
   'housing_urban',
   'health',
@@ -71,28 +70,18 @@ export const SPENDING_SECTORS = [
   'labour_employment',
   'police_justice',
   'administration_other',
+] as const;
+export type ProgrammeSector = (typeof PROGRAMME_SECTORS)[number];
+
+export const COMMITTED_SECTORS = [
   'interest',
   'pensions',
   'transfers_to_states',
   'transfers_to_local_bodies',
 ] as const;
+
+export const SPENDING_SECTORS = [...PROGRAMME_SECTORS, ...COMMITTED_SECTORS] as const;
 export type SpendingSector = (typeof SPENDING_SECTORS)[number];
-
-export const COMMITTED_SECTORS: readonly SpendingSector[] = [
-  'interest',
-  'pensions',
-  'transfers_to_states',
-  'transfers_to_local_bodies',
-];
-
-/** The sectors a topic can be about: programmes, not committed or pass-through spending. */
-export const PROGRAMME_SECTORS = SPENDING_SECTORS.filter(
-  (s) => !COMMITTED_SECTORS.includes(s),
-) as Exclude<
-  SpendingSector,
-  'interest' | 'pensions' | 'transfers_to_states' | 'transfers_to_local_bodies'
->[];
-export type ProgrammeSector = (typeof PROGRAMME_SECTORS)[number];
 
 export const FISCAL_CATEGORIES = [
   ...TAX_CATEGORIES,
@@ -233,7 +222,8 @@ export const financeSummarySchema = z.object({
 export type FinanceSummary = z.infer<typeof financeSummarySchema>;
 
 export const financeResponseSchema = z.object({
-  region_id: regionId,
+  // Declared here rather than imported from schemas.ts, which imports this module's vocabularies.
+  region_id: z.number().int().positive(),
   region_name: z.string(),
   population: z.number().nullable(),
   /** Years and stages this government has figures for, newest first. */

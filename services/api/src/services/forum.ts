@@ -22,7 +22,7 @@ import {
 } from '@civic-voice/core';
 import type { CacheTier, CitizenProfile, ForumAction } from '@civic-voice/cache';
 import type { CommentRow, Repositories, TopicRow } from '@civic-voice/db';
-import { detectPii, moderate } from '@civic-voice/nlp';
+import { detectPii, moderate, sectorFor } from '@civic-voice/nlp';
 import type { EventBus } from '@civic-voice/stream';
 import type { Metrics } from '@civic-voice/observability';
 import type { RegionCache } from './regions.ts';
@@ -325,6 +325,7 @@ export class ForumService {
       summary: null,
       effective_from: new Date().toISOString().slice(0, 10),
       source_refs: [],
+      sector: sectorFor(`${input.title}. ${input.details ?? ''}`),
     });
     this.deps.metrics.inc('civic_issues_raised_total', { held: String(held) });
     if (input.details && !held)

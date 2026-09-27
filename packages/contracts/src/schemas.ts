@@ -4,6 +4,7 @@
  * change fails `pnpm typecheck` at the call site instead of in production (ADR-0006).
  */
 import { z } from 'zod';
+import { PROGRAMME_SECTORS } from './finance.ts';
 import {
   AGE_BANDS,
   AUTHORITY_KINDS,
@@ -130,6 +131,8 @@ export const topicSchema = z.object({
   summary: z.string().nullable(),
   effective_from: isoDate.nullable(),
   source_refs: z.array(z.string().url()).default([]),
+  /** The spending head a topic is about, so opinion can be set against allocation (null: none fits). */
+  sector: z.enum(PROGRAMME_SECTORS).nullable().default(null),
 });
 export type Topic = z.infer<typeof topicSchema>;
 

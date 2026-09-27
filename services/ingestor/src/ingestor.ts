@@ -11,6 +11,7 @@ import {
   type SourceHealth,
   type SourceSpec,
 } from '@civic-voice/ingest';
+import { sectorFor } from '@civic-voice/nlp';
 import type { Logger, Metrics } from '@civic-voice/observability';
 
 /**
@@ -192,6 +193,7 @@ export class Ingestor {
         summary: doc.snippet,
         effective_from: doc.published_on,
         source_refs: [doc.url],
+        sector: sectorFor(`${doc.title}. ${doc.snippet ?? ''}`),
       });
       await this.deps.repos.documents.linkTopic(doc.id, topic.id);
       created++;

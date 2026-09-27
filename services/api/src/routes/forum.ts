@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   COHORT_IDS,
   COMMENT_SORTS,
+  DEMOGRAPHIC_DIMENSIONS,
   DOCUMENT_KINDS,
   FISCAL_STAGES,
   postCommentRequest,
@@ -12,6 +13,8 @@ import {
   reportCommentRequest,
   resolveLocationRequest,
   type CohortId,
+  type SectorInsight,
+  type VerificationTier,
 } from '@civic-voice/contracts';
 import { badRequest, DomainError } from '@civic-voice/core';
 import type { CacheTier } from '@civic-voice/cache';
@@ -267,6 +270,40 @@ export function registerForumRoutes(app: App, ctx: ForumRouteContext): void {
     return publicData.finance(region_id, fy, stage);
   });
 
+  app.get('/v1/insights/sectors', async (request, reply) => {
+    const q = regionQuery
+      .extend({
+        fy: z
+          .string()
+          .regex(/^\d{4}-\d{2}$/)
+          .optional(),
+        stage: z.enum(FISCAL_STAGES).optional(),
+        days: z.coerce.number().int().min(7).max(365).default(90),
+        dimension: z.enum(DEMOGRAPHIC_DIMENSIONS).optional(),
+        tier: z.coerce.number().int().min(0).max(3).optional(),
+        format: z.enum(['json', 'csv']).default('json'),
+      })
+      .parse(request.query);
+    const insight = await publicData.sectors(q.region_id, {
+      days: q.days,
+      ...(q.fy ? { fy: q.fy } : {}),
+      ...(q.stage ? { stage: q.stage } : {}),
+      ...(q.dimension ? { dimension: q.dimension } : {}),
+      ...(q.tier === undefined ? {} : { tier: q.tier as VerificationTier }),
+    });
+    // A research read over a scan: cached at the edge by its full query, so repeats cost nothing.
+    reply.header('cache-control', 'public, max-age=900, stale-while-revalidate=3600');
+    if (q.format === 'csv') {
+      reply.header('content-type', 'text/csv; charset=utf-8');
+      reply.header(
+        'content-disposition',
+        `attachment; filename="sectors-${insight.region_id}-${insight.fy ?? 'na'}.csv"`,
+      );
+      return sectorsCsv(insight);
+    }
+    return insight;
+  });
+
   app.get('/v1/insights/cohort', async (request, reply) => {
     const query = regionQuery
       .extend({
@@ -277,4 +314,64 @@ export function registerForumRoutes(app: App, ctx: ForumRouteContext): void {
     reply.header('cache-control', 'public, max-age=300, stale-while-revalidate=3600');
     return publicData.cohort(query.cohort, query.region_id, query.days);
   });
+}
+
+/**
+ * One row per sector (and per bucket, when a dimension is asked for), every gated value empty rather
+ * than zero where it was withheld — a researcher's spreadsheet must not mistake "withheld" for "none".
+ */
+export function sectorsCsv(i: SectorInsight): string {
+  const cell = (v: string | number | boolean | null | undefined) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = [
+    'region_id',
+    'region',
+    'fy',
+    'stage',
+    'sector',
+    'spending_crore',
+    'spending_share_of_programmes',
+    'attention_share',
+    'attention_voices',
+    'attention_negative_share',
+    'attention_minus_spending',
+    'topics',
+    'topics_counted',
+    'dimension',
+    'bucket',
+    'opinions',
+    'mean_mood',
+    'suppressed',
+  ];
+  const rows: string[][] = [];
+  for (const s of i.sectors) {
+    const base = [
+      i.region_id,
+      i.region_name,
+      i.fy,
+      i.stage,
+      s.sector,
+      s.spending.amount,
+      s.spending.share_of_programmes,
+      s.attention.share,
+      s.attention.voices,
+      s.attention.negative_share,
+      s.attention_minus_spending,
+      s.mood.topics,
+      s.mood.topics_counted,
+    ].map(cell);
+    for (const b of [s.mood.total, ...s.mood.buckets])
+      rows.push([
+        ...base,
+        cell(b === s.mood.total ? null : i.dimension),
+        cell(b === s.mood.total ? 'all' : b.bucket),
+        cell(b.suppressed ? null : b.n),
+        cell(b.mean_mood),
+        cell(b.suppressed),
+      ]);
+  }
+  return [header.join(','), ...rows.map((r) => r.join(','))].join('\n') + '\n';
 }

@@ -4,6 +4,7 @@ import { client, flushQueue, hasAccount, queueLength } from './api.ts';
 import { Discuss } from './components/Discuss.tsx';
 import { Economy } from './components/Economy.tsx';
 import { Finance } from './components/Finance.tsx';
+import { Sectors } from './components/Sectors.tsx';
 import { Home } from './components/Home.tsx';
 import { Jobs } from './components/Jobs.tsx';
 import { RegionPicker } from './components/RegionPicker.tsx';
@@ -244,6 +245,7 @@ export function App() {
           {tab === 'money' && (
             <>
               <Finance regionPath={session.regionPath} regionNames={regionNames} />
+              <Sectors regionPath={session.regionPath} regionNames={regionNames} />
               <Economy regionId={session.regionId} />
               <TaxPanel regionId={session.regionId} regionName={session.regionName} />
             </>

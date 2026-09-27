@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import type { CommentAnalyticsEvent } from '@civic-voice/contracts';
 import { createClickHouseAnalyticsStore } from '../../src/clickhouse.ts';
 import { createMemoryAnalyticsStore } from '../../src/memory.ts';
-import type { AnalyticsStore, CommentInsightQuery } from '../../src/ports.ts';
+import type { RawBucket } from '@civic-voice/core';
+import type { AnalyticsStore, CommentInsightQuery, DailyRollupRow } from '../../src/ports.ts';
 
 /**
  * Cohort insights on real ClickHouse, compared with the in-memory store on the same rows. The two must
@@ -17,7 +18,7 @@ const reachable = await store
   .catch(() => false);
 
 if (!reachable) {
-  describe('comment insights: clickhouse', () => {
+  describe('comment insights and topic slices: clickhouse', () => {
     test('skipped — no migrated ClickHouse reachable (run node packages/analytics/src/cli/migrate.ts)', (t) =>
       t.skip());
   });
@@ -87,9 +88,88 @@ if (!reachable) {
       }
     });
 
+    test('agrees on need groups: voices, comments and tone per sector, in the same scan', async () => {
+      const needGroups = {
+        education: ['education'],
+        agriculture: ['agriculture'],
+        labour_employment: ['employment'],
+        water_sanitation: ['water', 'sanitation'],
+      } as const;
+      const { ch, mem } = await both({
+        regionId: state,
+        filter: null,
+        since: '2026-09-01T00:00:00Z',
+        needGroups,
+      });
+      assert.deepEqual(ch.groups, mem.groups);
+      assert.equal(ch.groups['water_sanitation']?.comments, 0);
+      assert.ok((ch.groups['agriculture']?.voices ?? 0) > 0);
+    });
+
     test('the time window excludes older hours', async () => {
       const { ch } = await both({ regionId: city, filter: null, since: '2026-09-27T12:00:00Z' });
       assert.equal(ch.comments, 0);
+    });
+  });
+
+  describe('topic slices: clickhouse', () => {
+    const topicBase = 800_000_000 + Math.floor(Math.random() * 1_000_000) * 10;
+    const regionId = topicBase + 7;
+    const rollup = (
+      topicId: number,
+      dim: number,
+      bucket: string,
+      tier: 0 | 2,
+      h: [number, number, number, number, number],
+    ): DailyRollupRow => ({
+      day: '2026-09-27',
+      topicId,
+      regionId,
+      dim,
+      bucket,
+      tier,
+      n: h.reduce((a, b) => a + b, 0),
+      sumIntensity: 3 * h.reduce((a, b) => a + b, 0),
+      histogram: h,
+    });
+    const rows = [
+      rollup(topicBase, 0, 'all', 2, [10, 0, 0, 5, 20]),
+      rollup(topicBase, 0, 'all', 0, [0, 0, 7, 0, 0]),
+      rollup(topicBase, 1, '18-24', 2, [10, 0, 0, 0, 0]),
+      rollup(topicBase, 1, '65+', 2, [0, 0, 0, 5, 20]),
+      rollup(topicBase + 1, 0, 'all', 2, [1, 1, 1, 1, 1]),
+      // Another day for the same slice: summed, as the rollup is.
+      { ...rollup(topicBase + 1, 0, 'all', 2, [1, 0, 0, 0, 0]), day: '2026-09-26' },
+    ];
+
+    test('agrees with the in-memory store, across topics, tiers and days', async () => {
+      await store.insertRollups(rows);
+      const memory = createMemoryAnalyticsStore();
+      await memory.insertRollups(rows);
+      for (const [dim, tiers] of [
+        [0, [2, 3]],
+        [0, [0, 1, 2, 3]],
+        [1, [2, 3]],
+      ] as const) {
+        const query = { topicIds: [topicBase, topicBase + 1, topicBase + 2], regionId, dim, tiers };
+        const sort = (m: Map<number, RawBucket[]>) =>
+          [...m]
+            .sort(([a], [b]) => a - b)
+            .map(([t, bs]) => [t, [...bs].sort((a, b) => a.bucket.localeCompare(b.bucket))]);
+        assert.deepEqual(
+          sort(await store.topicSlices(query)),
+          sort(await memory.topicSlices(query)),
+          `dim ${dim}, tiers ${tiers.join('')}`,
+        );
+      }
+      const all = await store.topicSlices({
+        topicIds: [topicBase, topicBase + 1],
+        regionId,
+        dim: 0,
+        tiers: [2, 3],
+      });
+      assert.equal(all.get(topicBase)?.[0]?.n, 35);
+      assert.equal(all.get(topicBase + 1)?.[0]?.n, 6);
     });
   });
 }

@@ -486,7 +486,9 @@ export function runForumContract(name: string, open: () => Promise<Repositories>
           line({ region_id: tg }),
           line({ region_id: tg, category: 'education', amount: 21_000.05, provenance: 'sample' }),
         ]);
-        const got = mine(await repos.catalogue.fiscalLines(tg));
+        const got = mine(await repos.catalogue.fiscalLines(tg)).filter((r) =>
+          ['education', 'gst'].includes(r.category),
+        );
         assert.deepEqual(
           got.map((r) => [r.category, r.amount, r.provenance]),
           [

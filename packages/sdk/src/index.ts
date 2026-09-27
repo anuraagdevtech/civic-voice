@@ -5,6 +5,7 @@ import {
   digestSchema,
   documentViewSchema,
   financeResponseSchema,
+  sectorInsightSchema,
   errorResponse,
   indicatorSchema,
   jobsSummarySchema,
@@ -26,6 +27,7 @@ import {
   submitSentimentResponse,
   taxUtilisationView,
   topicSchema,
+  type DemographicDimension,
   type Demographics,
   type ErrorCode,
   type Locale,
@@ -34,6 +36,7 @@ import {
   type ReasonCode,
   type RtiState,
   type RtiTrack,
+  type VerificationTier,
 } from '@civic-voice/contracts';
 import { z } from 'zod';
 
@@ -463,6 +466,38 @@ export class CivicVoiceClient {
     return this.request('/v1/finance', financeResponseSchema, {
       query: { region_id: regionId, ...opts },
     });
+  }
+
+  /** Opinion against allocation, sector by sector, for one government. For researchers. */
+  async sectorInsight(
+    regionId: number,
+    opts: {
+      fy?: string;
+      stage?: FiscalStage;
+      days?: number;
+      dimension?: DemographicDimension;
+      tier?: VerificationTier;
+    } = {},
+  ) {
+    return this.request('/v1/insights/sectors', sectorInsightSchema, {
+      query: { region_id: regionId, ...opts },
+    });
+  }
+
+  /** The same, as CSV, for a spreadsheet. The URL is edge-cacheable and needs no credentials. */
+  sectorInsightCsvUrl(
+    regionId: number,
+    opts: {
+      fy?: string;
+      stage?: FiscalStage;
+      days?: number;
+      dimension?: DemographicDimension;
+      tier?: VerificationTier;
+    } = {},
+  ): string {
+    const q = new URLSearchParams({ region_id: String(regionId), format: 'csv' });
+    for (const [k, v] of Object.entries(opts)) if (v !== undefined) q.set(k, String(v));
+    return `${this.baseUrl}/v1/insights/sectors?${q.toString()}`;
   }
 
   async cohortInsight(cohort: CohortId, regionId: number, days = 30) {

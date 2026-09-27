@@ -13,7 +13,9 @@ import type {
   AnalyticsStore,
   CommentInsightQuery,
   CommentInsightResult,
+  CommentGroupFigures,
   CrossSliceQuery,
+  TopicSlicesQuery,
   DailyRollupRow,
   RtiOutcomeRow,
   ScorecardResult,
@@ -122,6 +124,20 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
       (n, i) => `uniqExactIf(dedupe_key, has(needs, {need${i}:String})) AS n${i}`,
     );
     NEEDS.forEach((n, i) => (params[`need${i}`] = n));
+    // Each need group adds five aggregates to the same scan; group names never reach the SQL, only
+    // their position, and their needs are bound as parameters.
+    const groupNames = Object.keys(query.needGroups ?? {});
+    const groupColumns = groupNames.flatMap((name, g) => {
+      params[`group${g}`] = [...(query.needGroups?.[name] ?? [])];
+      const inGroup = `hasAny(needs, {group${g}:Array(String)})`;
+      return [
+        `uniqExactIf(topic_id, author_key, ${inGroup}) AS g${g}_voices`,
+        `uniqExactIf(dedupe_key, ${inGroup}) AS g${g}_comments`,
+        `uniqExactIf(dedupe_key, ${inGroup} AND sentiment = -1) AS g${g}_negative`,
+        `uniqExactIf(dedupe_key, ${inGroup} AND sentiment = 0) AS g${g}_neutral`,
+        `uniqExactIf(dedupe_key, ${inGroup} AND sentiment = 1) AS g${g}_positive`,
+      ];
+    });
 
     const [summary, topics] = await Promise.all([
       this.client
@@ -133,7 +149,7 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
                    uniqExactIf(dedupe_key, sentiment = 0) AS neutral,
                    uniqExactIf(dedupe_key, sentiment = 1) AS positive,
                    uniqExactIf(dedupe_key, suggestion = 1) AS suggestions,
-                   ${needColumns.join(',\n                   ')}
+                   ${[...needColumns, ...groupColumns].join(',\n                   ')}
             FROM comment_event WHERE ${where}`,
           query_params: params,
           format: 'JSONEachRow',
@@ -156,7 +172,18 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
       const count = Number(row[`n${i}`] ?? 0);
       if (count > 0) needs[n] = count;
     });
+    const groups: Record<string, CommentGroupFigures> = {};
+    groupNames.forEach((name, g) => {
+      groups[name] = {
+        voices: Number(row[`g${g}_voices`] ?? 0),
+        comments: Number(row[`g${g}_comments`] ?? 0),
+        negative: Number(row[`g${g}_negative`] ?? 0),
+        neutral: Number(row[`g${g}_neutral`] ?? 0),
+        positive: Number(row[`g${g}_positive`] ?? 0),
+      };
+    });
     return {
+      groups,
       voices: Number(row['voices'] ?? 0),
       comments: Number(row['comments'] ?? 0),
       needs,
@@ -295,6 +322,41 @@ export class ClickHouseAnalyticsStore implements AnalyticsStore {
         Number(row['sum_intensity']),
       ),
     );
+  }
+
+  async topicSlices(query: TopicSlicesQuery): Promise<Map<number, RawBucket[]>> {
+    if (query.topicIds.length === 0 || query.tiers.length === 0) return new Map();
+    const result = await this.client.query({
+      query: `
+        SELECT topic_id, bucket,
+               sum(sum_intensity) AS sum_intensity,
+               sum(h_angry) AS h0, sum(h_concerned) AS h1, sum(h_neutral) AS h2,
+               sum(h_hopeful) AS h3, sum(h_satisfied) AS h4
+        FROM mood_rollup
+        WHERE topic_id IN {topicIds:Array(UInt64)} AND region_id = {regionId:UInt64}
+          AND dim = {dim:UInt8} AND tier IN {tiers:Array(UInt8)}
+        GROUP BY topic_id, bucket`,
+      query_params: {
+        topicIds: [...query.topicIds],
+        regionId: query.regionId,
+        dim: query.dim,
+        tiers: [...query.tiers],
+      },
+      format: 'JSONEachRow',
+    });
+    const out = new Map<number, RawBucket[]>();
+    for (const row of await result.json<Record<string, string | number>>()) {
+      const topicId = Number(row['topic_id']);
+      out.set(topicId, [
+        ...(out.get(topicId) ?? []),
+        fromHistogram(
+          String(row['bucket']),
+          [0, 1, 2, 3, 4].map((i) => Number(row[`h${i}`])) as never,
+          Number(row['sum_intensity']),
+        ),
+      ]);
+    }
+    return out;
   }
 
   /**

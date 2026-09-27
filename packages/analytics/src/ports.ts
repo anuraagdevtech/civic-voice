@@ -78,6 +78,20 @@ export interface CommentInsightQuery {
   /** ISO timestamp; comments from this hour on. */
   since: string;
   topTopics?: number;
+  /**
+   * Named groups of needs — the needs a spending sector answers — each counted in the same scan: the
+   * distinct voices (for the k-anonymity gate), comments and tone of the comments tagged with any of
+   * the group's needs.
+   */
+  needGroups?: Readonly<Record<string, readonly Need[]>>;
+}
+
+export interface CommentGroupFigures {
+  voices: number;
+  comments: number;
+  negative: number;
+  neutral: number;
+  positive: number;
 }
 
 export interface CommentInsightResult {
@@ -89,6 +103,15 @@ export interface CommentInsightResult {
   sentiment: { negative: number; neutral: number; positive: number };
   suggestions: number;
   topTopics: Array<{ topicId: number; comments: number }>;
+  /** One entry per requested need group; empty when none were asked for. */
+  groups: Record<string, CommentGroupFigures>;
+}
+
+export interface TopicSlicesQuery {
+  topicIds: readonly number[];
+  regionId: number;
+  dim: number;
+  tiers: readonly VerificationTier[];
 }
 
 export interface AnalyticsStore {
@@ -122,6 +145,11 @@ export interface AnalyticsStore {
   ): Promise<RawBucket[]>;
   /** The gated cross-product path (ADR-0002): on demand, rate-limited, k-anonymity enforced. */
   crossSlice(query: CrossSliceQuery): Promise<RawBucket>;
+  /**
+   * The marginal slice of many topics at one region, from the daily rollups — one scan for a whole
+   * sector's topics. Raw: the caller gates each topic before combining anything.
+   */
+  topicSlices(query: TopicSlicesQuery): Promise<Map<number, RawBucket[]>>;
   /** Distinct participants, for the population-share ceiling. */
   participants(topicId: number, regionId: number, day: string): Promise<number>;
   insertRtiOutcomes(rows: readonly RtiOutcomeRow[]): Promise<void>;

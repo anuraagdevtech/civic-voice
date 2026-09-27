@@ -328,6 +328,9 @@ importers:
       '@civic-voice/ingest':
         specifier: workspace:*
         version: link:../../packages/ingest
+      '@civic-voice/nlp':
+        specifier: workspace:*
+        version: link:../../packages/nlp
       '@civic-voice/observability':
         specifier: workspace:*
         version: link:../../packages/observability

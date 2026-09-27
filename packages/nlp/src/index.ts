@@ -9,3 +9,4 @@ export * from './pii.ts';
 export * from './text.ts';
 export * from './claude.ts';
 export * from './digest.ts';
+export * from './sector.ts';

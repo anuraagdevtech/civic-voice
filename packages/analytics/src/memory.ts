@@ -13,9 +13,11 @@ import {
 } from '@civic-voice/core';
 import type {
   AnalyticsStore,
+  CommentGroupFigures,
   CommentInsightQuery,
   CommentInsightResult,
   CrossSliceQuery,
+  TopicSlicesQuery,
   DailyRollupRow,
   RtiOutcomeRow,
   ScorecardResult,
@@ -61,7 +63,19 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
       sentiment[e.sentiment] += 1;
       perTopic.set(e.topic_id, (perTopic.get(e.topic_id) ?? 0) + 1);
     }
+    const groups: Record<string, CommentGroupFigures> = {};
+    for (const [name, groupNeeds] of Object.entries(query.needGroups ?? {})) {
+      const inGroup = rows.filter((e) => e.needs.some((n) => groupNeeds.includes(n)));
+      groups[name] = {
+        voices: new Set(inGroup.map((e) => `${e.topic_id}:${e.author_key}`)).size,
+        comments: inGroup.length,
+        negative: inGroup.filter((e) => e.sentiment === 'negative').length,
+        neutral: inGroup.filter((e) => e.sentiment === 'neutral').length,
+        positive: inGroup.filter((e) => e.sentiment === 'positive').length,
+      };
+    }
     return {
+      groups,
       voices: new Set(rows.map((e) => `${e.topic_id}:${e.author_key}`)).size,
       comments: rows.length,
       needs,
@@ -151,6 +165,31 @@ export class MemoryAnalyticsStore implements AnalyticsStore {
     }
     return [...byBucket.entries()].map(([bucket, acc]) =>
       fromHistogram(bucket, acc.histogram as never, acc.sumIntensity),
+    );
+  }
+
+  async topicSlices(query: TopicSlicesQuery): Promise<Map<number, RawBucket[]>> {
+    const topics = new Set(query.topicIds);
+    const tiers = new Set(query.tiers);
+    const acc = new Map<number, Map<string, { histogram: number[]; sumIntensity: number }>>();
+    for (const row of this.rollups) {
+      if (!topics.has(row.topicId) || row.regionId !== query.regionId) continue;
+      if (row.dim !== query.dim || !tiers.has(row.tier)) continue;
+      const byBucket = acc.get(row.topicId) ?? new Map();
+      const b = byBucket.get(row.bucket) ?? { histogram: [0, 0, 0, 0, 0], sumIntensity: 0 };
+      for (let i = 0; i < 5; i += 1)
+        b.histogram[i] = (b.histogram[i] as number) + (row.histogram[i] as number);
+      b.sumIntensity += row.sumIntensity;
+      byBucket.set(row.bucket, b);
+      acc.set(row.topicId, byBucket);
+    }
+    return new Map(
+      [...acc].map(([topicId, byBucket]) => [
+        topicId,
+        [...byBucket].map(([bucket, b]) =>
+          fromHistogram(bucket, b.histogram as never, b.sumIntensity),
+        ),
+      ]),
     );
   }
 

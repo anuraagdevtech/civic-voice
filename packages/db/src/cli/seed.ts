@@ -250,12 +250,21 @@ async function main() {
       ],
     ];
 
+    // The spending head each is about, set by hand here; ingested topics get theirs from the need lexicon.
+    const sectorOf: Record<string, string> = {
+      'Jal Jeevan Mission: piped water to every rural household': 'water_sanitation',
+      'MGNREGS wage revision for FY 2026-27': 'rural_development',
+      'Ayushman Bharat coverage extended to citizens above 70': 'health',
+      'Lucknow: Gomti riverfront phase III': 'housing_urban',
+      'Kerala: revised water tariff slabs': 'water_sanitation',
+    };
+
     for (const [kind, title, region, authority, scheme, from, summary] of topics) {
       const regionId = regionIdOf(region, 'topic');
       await client.query(
         `INSERT INTO civic_catalogue.topic
-           (kind, status, jurisdiction_region_id, authority_id, scheme_id, title, summary, effective_from, source_refs)
-         VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8)`,
+           (kind, status, jurisdiction_region_id, authority_id, scheme_id, title, summary, effective_from, source_refs, sector)
+         VALUES ($1, 'active', $2, $3, $4, $5, $6, $7, $8, $9)`,
         [
           kind,
           regionId,
@@ -267,6 +276,7 @@ async function main() {
           JSON.stringify([
             `https://example.gov.in/notifications/${encodeURIComponent(title).slice(0, 40)}`,
           ]),
+          sectorOf[title] ?? null,
         ],
       );
     }

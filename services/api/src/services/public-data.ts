@@ -1,5 +1,13 @@
 import {
   COHORTS,
+  DEFAULT_PUBLIC_TIER,
+  DIMENSION_BUCKETS,
+  DIMENSION_TOTAL,
+  FISCAL_STAGE_LABELS,
+  dimensionIndex,
+  type DemographicDimension,
+  type SectorInsight,
+  type VerificationTier,
   NEED_LABELS,
   NEEDS,
   type CohortId,
@@ -12,10 +20,22 @@ import {
   type JobsSummary,
   type Need,
 } from '@civic-voice/contracts';
-import { availableYears, notFound, summariseFinance } from '@civic-voice/core';
+import {
+  availableYears,
+  notFound,
+  sectorNeedGroups,
+  summariseFinance,
+  summariseSectors,
+  tiersAtOrAbove,
+  TOTAL_BUCKET,
+  type RawBucket,
+} from '@civic-voice/core';
 import type { AnalyticsStore, CohortFilter, CommentInsightResult } from '@civic-voice/analytics';
 import type { DocumentRow, Repositories } from '@civic-voice/db';
 import type { RegionCache } from './regions.ts';
+
+/** The newest decisions of one government that a sector-wide mood read covers. */
+export const SECTOR_TOPIC_LIMIT = 2_000;
 
 /**
  * Read models over public data: documents (GOs, projects, notifications, news links), the jobs board,
@@ -159,6 +179,102 @@ export class PublicDataService {
         ...(stage ? { stage } : {}),
         population: region.population,
       }),
+    };
+  }
+
+  /**
+   * Opinion against allocation, sector by sector, for one government (ADR-0013): its programme
+   * spending, what its residents raise, and their mood on its own decisions — for researchers.
+   *
+   * Three reads regardless of scale: the government's budget lines and sector-tagged topics from the
+   * catalogue (the topics capped, newest first), one comment scan grouped by sector, and one rollup
+   * scan over those topics. Every figure is gated in `summariseSectors`.
+   */
+  async sectors(
+    regionId: number,
+    q: {
+      fy?: string;
+      stage?: FiscalStage;
+      days: number;
+      dimension?: DemographicDimension;
+      tier?: VerificationTier;
+    },
+  ): Promise<SectorInsight> {
+    const region = await this.deps.regions.one(regionId);
+    if (!region) throw notFound(`no region ${regionId}`);
+    const k = this.deps.kAnonymity;
+    const tier = q.tier ?? DEFAULT_PUBLIC_TIER;
+    const tiers = tiersAtOrAbove(tier);
+    const dim = q.dimension ? dimensionIndex(q.dimension) : null;
+    const [figures, topics] = await Promise.all([
+      this.deps.repos.catalogue.fiscalLines(regionId),
+      this.deps.repos.catalogue.sectorTopics(regionId, SECTOR_TOPIC_LIMIT),
+    ]);
+    const topicIds = topics.map((t) => t.id);
+    const since = new Date(this.now().getTime() - q.days * 86_400_000).toISOString();
+    const analytics = this.deps.analytics;
+    const none = new Map<number, RawBucket[]>();
+    // No analytical store (a minimal deployment): attention and mood read as withheld, not as zero.
+    const [comments, totals, byDim, quarantine] = analytics
+      ? await Promise.all([
+          analytics.commentInsights({
+            regionId,
+            filter: null,
+            since,
+            topTopics: 0,
+            needGroups: sectorNeedGroups(),
+          }),
+          analytics.topicSlices({ topicIds, regionId, dim: DIMENSION_TOTAL, tiers }),
+          dim === null ? none : analytics.topicSlices({ topicIds, regionId, dim, tiers }),
+          dim === null
+            ? []
+            : this.deps.repos.catalogue.quarantinedBucketsForTopics(topicIds, regionId, dim),
+        ])
+      : [null, none, none, []];
+
+    const r = summariseSectors({
+      figures,
+      ...(q.fy ? { fy: q.fy } : {}),
+      ...(q.stage ? { stage: q.stage } : {}),
+      comments,
+      slices: topics.map((t) => ({
+        topicId: t.id,
+        sector: t.sector,
+        total: totals.get(t.id)?.find((b) => b.bucket === TOTAL_BUCKET),
+        buckets: byDim.get(t.id) ?? [],
+        quarantined: new Set(quarantine.filter((x) => x.topic_id === t.id).map((x) => x.bucket)),
+      })),
+      expectedBuckets: q.dimension ? DIMENSION_BUCKETS[q.dimension] : null,
+      k,
+    });
+
+    return {
+      region_id: region.id,
+      region_name: region.name,
+      fy: r.fy,
+      stage: r.stage,
+      window_days: q.days,
+      dimension: q.dimension ?? null,
+      tier,
+      k,
+      sectors: r.rows,
+      unmapped: r.unmapped,
+      provenance: r.provenance,
+      sources: r.sources,
+      method: [
+        r.fy && r.stage
+          ? `Spending: ${region.name}'s ${r.fy} ${FISCAL_STAGE_LABELS[r.stage].toLowerCase()}, programme heads only. Interest, pensions and money passed to other governments are left out of the shares.`
+          : `Spending: no budget figures are loaded for ${region.name}.`,
+        `Attention: comments by residents of ${region.name} in the last ${q.days} days, on any topic, with the needs the comment model labelled them with. Each need is mapped to the budget head that answers it; a comment raising two sectors counts in both. A sector's share is of all sector mentions, so it can be set beside its share of spending.`,
+        `Mood: opinions of residents of ${region.name} (verification tier ${tier} and above) on ${region.name}'s own decisions tagged with the sector — at most the ${SECTOR_TOPIC_LIMIT} newest. Each topic is gated on its own before any are combined, so nothing withheld on a topic page is recoverable here.`,
+        `Every figure is shown only where at least ${k} distinct people contributed, with complementary suppression so a withheld figure cannot be recovered by subtraction.`,
+        ...(q.dimension
+          ? [
+              `By ${q.dimension.replace('_', ' ')}: a group's figure counts only the topics where that group was large enough to publish, so it can undercount; a group withheld in every topic is withheld here too, never shown as zero.`,
+            ]
+          : []),
+        'These are associations, not causes. A sector can be raised often because it is well funded and visible, or because it is not; opinion on a few prominent decisions is not opinion on the whole budget head.',
+      ],
     };
   }
 
