@@ -301,12 +301,14 @@ export type Indicator = z.infer<typeof indicatorSchema>;
 /**
  * Named cohorts, defined in demographic bands. "Youth" is 18–34 because the bands are 18–24 and
  * 25–34; India's National Youth Policy says 15–29, and the response says which definition it used.
+ * "Job seekers" is the PLFS sense of unemployed: without work and looking for it, self-reported.
  */
 export const COHORTS = {
   youth: { label: 'Youth (18–34)', filter: { age_band: ['18-24', '25-34'] } },
   farmers: { label: 'Farmers', filter: { occupation_band: ['agriculture'] } },
   women: { label: 'Women', filter: { gender: ['female'] } },
   students: { label: 'Students', filter: { occupation_band: ['student'] } },
+  jobseekers: { label: 'Job seekers', filter: { employment_status: ['unemployed_seeking'] } },
 } as const;
 export type CohortId = keyof typeof COHORTS;
 export const COHORT_IDS = Object.keys(COHORTS) as CohortId[];

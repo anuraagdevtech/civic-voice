@@ -282,18 +282,32 @@ export const DEMO_RESIDENTS: DemoResident[] = [
   ...residents(youthCity, wards, (i) => ({
     age_band: i % 3 === 0 ? '25-34' : '18-24',
     occupation_band: i % 2 === 0 ? 'student' : 'salaried_private',
+    // Students preparing for recruitment exams are job seekers; a few are only studying.
+    employment_status:
+      i % 2 === 0
+        ? i % 6 === 0
+          ? 'not_in_labour_force'
+          : 'unemployed_seeking'
+        : 'employed_regular',
     gender: ['female', 'male'][i % 2] as string,
     urbanity: 'urban',
   })),
   ...residents(farmersState, ['IN-TG'], (i) => ({
     age_band: ['35-44', '45-54', '25-34', '55-64'][i % 4] as string,
     occupation_band: 'agriculture',
+    employment_status: 'employed_irregular',
     gender: ['male', 'female', 'male'][i % 3] as string,
     urbanity: 'rural',
   })),
   ...residents(others, wards, (i) => ({
     age_band: ['45-54', '55-64', '65+', '35-44'][i % 4] as string,
     occupation_band: ['self_employed', 'retired_other', 'homemaker', 'government'][i % 4] as string,
+    employment_status: [
+      'employed_irregular',
+      'not_in_labour_force',
+      'not_in_labour_force',
+      'employed_regular',
+    ][i % 4] as string,
     urbanity: 'urban',
   })),
 ];

@@ -92,6 +92,7 @@ for (let i = 0; i < 60; i += 1) {
         gender: GENDER[i % 2],
         urbanity: i % 2 === 0 ? 'rural' : 'urban',
         occupation_band: i % 2 === 0 ? 'agriculture' : 'salaried_private',
+        employment_status: i % 2 === 0 ? 'employed_irregular' : 'employed_regular',
       },
     },
   });

@@ -35,6 +35,7 @@ const DIMENSION_COLUMN: Record<string, string> = {
   income_band: 'income_band',
   education_band: 'education_band',
   occupation_band: 'occupation_band',
+  employment_status: 'employment_status',
 };
 
 export interface ClickHouseOptions {

@@ -30,6 +30,7 @@ const fullEvent = (over: Partial<SentimentEvent> = {}): SentimentEvent => ({
     income_band: 'lower_middle',
     education_band: 'graduate',
     occupation_band: 'agriculture',
+    employment_status: 'employed_irregular',
   },
   mood: -1,
   intensity: 4,
@@ -40,10 +41,10 @@ const fullEvent = (over: Partial<SentimentEvent> = {}): SentimentEvent => ({
 });
 
 describe('rollup fan-out', () => {
-  test('a fully-specified event touches exactly 28 counters', () => {
+  test('a fully-specified event touches exactly 32 counters', () => {
     const keys = rollupKeysFor(fullEvent());
-    assert.equal(keys.length, 28, 'the number docs/SCALING.md §5 is built on');
-    assert.equal(maxKeysPerEvent(), 28);
+    assert.equal(keys.length, 32, 'the number docs/SCALING.md §5 is built on');
+    assert.equal(maxKeysPerEvent(), 32);
   });
 
   test('fan-out stops at constituency: a ward is never a rollup level', () => {
@@ -59,10 +60,10 @@ describe('rollup fan-out', () => {
     const keys = rollupKeysFor(fullEvent());
     for (const regionId of [1, 10, 105, 1052]) {
       const forRegion = keys.filter((k) => k.regionId === regionId);
-      assert.equal(forRegion.length, 7);
+      assert.equal(forRegion.length, 8);
       assert.equal(forRegion.filter((k) => k.dim === 0).length, 1);
       assert.equal(forRegion.find((k) => k.dim === 0)?.bucket, TOTAL_BUCKET);
-      assert.equal(new Set(forRegion.map((k) => k.dim)).size, 7, 'dimensions must not collide');
+      assert.equal(new Set(forRegion.map((k) => k.dim)).size, 8, 'dimensions must not collide');
     }
   });
 
@@ -80,7 +81,7 @@ describe('rollup fan-out', () => {
 
   test('a shallow region path produces proportionally fewer keys', () => {
     const keys = rollupKeysFor(fullEvent({ region_path: [1, 10] }));
-    assert.equal(keys.length, 2 * 7);
+    assert.equal(keys.length, 2 * 8);
   });
 
   test('the day bucket comes from the event time in UTC, not from now', () => {
@@ -108,7 +109,7 @@ describe('rollup fan-out', () => {
 describe('rollup mutations', () => {
   test('a first-time opinion is a single +1 per key', () => {
     const mutations = mutationsFor(fullEvent());
-    assert.equal(mutations.length, 28);
+    assert.equal(mutations.length, 32);
     assert.ok(mutations.every((m) => m.delta === 1));
   });
 
@@ -116,12 +117,12 @@ describe('rollup mutations', () => {
     const mutations = mutationsFor(
       fullEvent({ mood: 2, replaces: { mood: -1, intensity: 4, reason_code: 'no_reason' } }),
     );
-    assert.equal(mutations.length, 56, 'two mutations per key');
+    assert.equal(mutations.length, 64, 'two mutations per key');
 
     const retractions = mutations.filter((m) => m.delta === -1);
     const additions = mutations.filter((m) => m.delta === 1);
-    assert.equal(retractions.length, 28);
-    assert.equal(additions.length, 28);
+    assert.equal(retractions.length, 32);
+    assert.equal(additions.length, 32);
     assert.ok(
       retractions.every((m) => m.mood === -1),
       'retraction carries the OLD mood',

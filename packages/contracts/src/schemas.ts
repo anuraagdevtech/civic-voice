@@ -9,6 +9,7 @@ import {
   AUTHORITY_KINDS,
   DEMOGRAPHIC_DIMENSIONS,
   EDUCATION_BANDS,
+  EMPLOYMENT_STATUSES,
   GENDERS,
   INCOME_BANDS,
   LOCALES,
@@ -60,6 +61,7 @@ export const demographicsSchema = z.object({
   income_band: z.enum(INCOME_BANDS).optional(),
   education_band: z.enum(EDUCATION_BANDS).optional(),
   occupation_band: z.enum(OCCUPATION_BANDS).optional(),
+  employment_status: z.enum(EMPLOYMENT_STATUSES).optional(),
 });
 export type Demographics = z.infer<typeof demographicsSchema>;
 

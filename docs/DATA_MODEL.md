@@ -18,7 +18,7 @@ Pseudonymous account. Deliberately holds **no PII** — no name, no phone, no go
 | --- | --- | --- |
 | `id` | `uuid` (v7) | Time-ordered, so index inserts are append-mostly |
 | `region_id` | `bigint` | Their attested home region (ward/panchayat granularity) |
-| `age_band`, `gender`, `urbanity`, `income_band`, `education_band`, `occupation_band` | `smallint` | Coarse bands only. Never a birth date, never an exact income |
+| `age_band`, `gender`, `urbanity`, `income_band`, `education_band`, `occupation_band`, `employment_status` | `smallint` | Coarse bands only. Never a birth date, never an exact income, never an employer |
 | `verification_tier` | `smallint` | 0 anonymous → 3 gov-ID + address attested |
 | `locale` | `text` | One of the 22 scheduled languages + English |
 | `dek_wrapped` | `bytea` | Per-citizen data-encryption key, wrapped by KMS. Erasure = destroy this |
@@ -113,7 +113,7 @@ bridge from "a citizen asked a question" to "here is the evidence about where th
 Append-only, the system of record for opinion history.
 
 `event_id`, `occurred_at`, `topic_id`, `region_path` (4 ancestor ids, denormalised at write
-time), the 6 demographic bands, `verification_tier`, `mood`, `intensity`, `reason_code`,
+time), the 7 demographic bands, `verification_tier`, `mood`, `intensity`, `reason_code`,
 `pseudonym` (per-topic, see [PRIVACY.md](./PRIVACY.md)), `delta` (+1 / −1).
 
 `PARTITION BY toYYYYMM(occurred_at)`, `ORDER BY (topic_id, occurred_at, event_id)`.

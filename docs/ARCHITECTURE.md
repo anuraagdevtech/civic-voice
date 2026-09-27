@@ -114,16 +114,16 @@ down, the API degrades to "accepted, aggregate will follow" rather than failing 
 Two tiers, chosen by cardinality:
 
 - **Pre-computed marginals** (the 99% case). For every event the worker touches
-  `4 regions × (6 demographic dimensions + 1 total)` = **28 counters** — marginals, *not* the
+  `4 regions × (7 demographic dimensions + 1 total)` = **32 counters** — marginals, *not* the
   cross-product. Served from Redis; edge-cached for 30–60s with `stale-while-revalidate`.
 - **Ad-hoc cross-product slices** (the 1% case, for journalists and researchers). Computed in
   ClickHouse on demand, forced through the k-anonymity gate, rate-limited per API key and
   cached by normalised query hash.
 
-Refusing to pre-compute the cross-product is deliberate: the six dimensions crossed are 7,200
-buckets per (topic, region, day, tier) versus 30 as marginals — a 240× difference, and ~1.4B rows
-a day instead of ~1.5M — for questions almost nobody asks. Marginals answer the questions people
-actually do ask, in 28 increments.
+Refusing to pre-compute the cross-product is deliberate: the seven dimensions crossed are 28,800
+buckets per (topic, region, day, tier) versus 34 as marginals — an ~850× difference, and ~5.8B rows
+a day instead of ~1.7M — for questions almost nobody asks. Marginals answer the questions people
+actually do ask, in 32 increments.
 
 ## 6. Correctness concerns that scale forces on us
 

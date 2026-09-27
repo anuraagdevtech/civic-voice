@@ -60,7 +60,7 @@ One decision does most of the work:
 Everything else follows. Citizen data is sharded by `hash(citizen_id) % 1024` — not by region,
 because Uttar Pradesh is ~240M people and Lakshadweep is ~64,000, and no rebalancing fixes a 3,750:1
 skew ([ADR-0001](docs/adr/0001-shard-by-citizen-not-region.md)). Region-shaped questions are answered
-from marginals rather than cross-products, which is a 240× reduction in rollup rows
+from marginals rather than cross-products, which is an ~850× reduction in rollup rows
 ([ADR-0002](docs/adr/0002-precompute-marginals-not-crossproducts.md)). The write path appends to an
 event log and returns; nothing on it computes ([ADR-0003](docs/adr/0003-event-log-as-commit-point.md)).
 
@@ -72,7 +72,7 @@ the numbers in [docs/SCALING.md](docs/SCALING.md) cannot silently rot:
 | 1.4B registered → 90M daily active | 150M writes/day, 1.5B reads/day |
 | Spike (budget day, a verdict) | 170k writes/s, 520k reads/s |
 | Absorbed at the CDN | ~98% of reads → ~10k/s at origin |
-| Counter touches per event | 28 — four region levels × (six marginals + total) |
+| Counter touches per event | 32 — four region levels × (seven marginals + total) |
 | Write fleet at spike | ~88 pods, from a **measured** 2.0 ms per write |
 
 ## Three things this design refuses to do

@@ -57,6 +57,7 @@ export function runRepositoryContract(name: string, open: () => Promise<Reposito
               income_band: 'highest' as const,
               education_band: 'postgraduate' as const,
               occupation_band: 'retired_other' as const,
+              employment_status: 'not_in_labour_force' as const,
             },
           };
           await repos.citizens.create(input);

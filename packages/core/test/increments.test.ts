@@ -64,7 +64,7 @@ describe('increment accumulation', () => {
     assert.equal(out[0]?.intensity, -6);
   });
 
-  test('a changed opinion across 28 keys merges to 56 increments, not 28', () => {
+  test('a changed opinion across 32 keys merges to 64 increments, not 32', () => {
     const event: SentimentEvent = {
       event_id: '01a0e05b-1a3e-741e-aba4-0c6b30f05b83',
       citizen_id: '01a0e05b-1a3e-741e-aba4-0c6b30f05b84',
@@ -80,6 +80,7 @@ describe('increment accumulation', () => {
         income_band: 'middle',
         education_band: 'graduate',
         occupation_band: 'agriculture',
+        employment_status: 'employed_irregular',
       },
       mood: 2,
       intensity: 3,
@@ -88,29 +89,29 @@ describe('increment accumulation', () => {
       replaces: { mood: -2, intensity: 5, reason_code: 'no_reason' },
     };
     const out = incrementsFrom(mutationsFor(event));
-    // Two distinct moods per key, so the 56 mutations collapse to 56 increments — nothing to merge.
-    assert.equal(out.length, 56);
+    // Two distinct moods per key, so the 64 mutations collapse to 64 increments — nothing to merge.
+    assert.equal(out.length, 64);
     const retractions = out.filter((i) => i.count === -1);
     const additions = out.filter((i) => i.count === 1);
-    assert.equal(retractions.length, 28);
-    assert.equal(additions.length, 28);
+    assert.equal(retractions.length, 32);
+    assert.equal(additions.length, 32);
     assert.ok(retractions.every((i) => i.mood === -2 && i.intensity === -5));
     assert.ok(additions.every((i) => i.mood === 2 && i.intensity === 3));
   });
 
   test('a spike of identical submissions collapses hard — the headroom the worker gains', () => {
-    // 500 citizens, same topic, same region, same bands, same mood: 500 × 28 = 14,000 mutations.
+    // 500 citizens, same topic, same region, same bands, same mood: 500 × 32 = 16,000 mutations.
     const mutations = [];
     for (let i = 0; i < 500; i += 1) {
       for (const regionId of [1, 10, 105, 1052]) {
-        for (const dim of [0, 1, 2, 3, 4, 5, 6]) {
+        for (const dim of [0, 1, 2, 3, 4, 5, 6, 7]) {
           mutations.push(mut(key({ regionId, dim, bucket: dim === 0 ? 'all' : 'b' }), -2, 5, 1));
         }
       }
     }
-    assert.equal(mutations.length, 14_000);
+    assert.equal(mutations.length, 16_000);
     const merged = incrementsFrom(mutations);
-    assert.equal(merged.length, 28, 'collapses to one increment per counter slot');
+    assert.equal(merged.length, 32, 'collapses to one increment per counter slot');
     assert.equal(merged[0]?.count, 500, 'and carries the full count');
     assert.equal(merged[0]?.intensity, 2_500);
   });

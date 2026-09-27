@@ -8,6 +8,7 @@ const COHORTS: Array<{ id: CohortId; label: string; question: string }> = [
   { id: 'farmers', label: 'Farmers', question: 'What do farmers need?' },
   { id: 'women', label: 'Women', question: 'What do women raise?' },
   { id: 'students', label: 'Students', question: 'What do students raise?' },
+  { id: 'jobseekers', label: 'Job seekers', question: 'What do people looking for work need?' },
 ];
 
 /**

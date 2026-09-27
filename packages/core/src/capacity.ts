@@ -3,9 +3,10 @@ import { DEMOGRAPHIC_DIMENSIONS, ROLLUP_FANOUT } from '@civic-voice/contracts';
 /**
  * The capacity model from docs/SCALING.md, as executable code.
  *
- * Capacity numbers written only in prose rot silently: someone adds a seventh demographic
- * dimension or a fifth rollup level, the doc still says 28 counters per event, and the Redis
- * cluster is under-provisioned by 40% before anyone notices. Here the numbers are *derived* from
+ * Capacity numbers written only in prose rot silently: someone adds an eighth demographic
+ * dimension or a fifth rollup level, the doc still says 32 counters per event, and the Redis
+ * cluster is under-provisioned by 12–25% before anyone notices. (Adding the seventh, employment
+ * status, failed four tests here until every published figure was brought up to date.) Here the numbers are *derived* from
  * the same constants the runtime uses, and the test suite asserts the documented figures. Change a
  * constant and the test tells you which published number is now wrong.
  */
@@ -182,6 +183,7 @@ const DIMENSION_SIZES: Record<(typeof DEMOGRAPHIC_DIMENSIONS)[number], number> =
   income_band: 5,
   education_band: 5,
   occupation_band: 8,
+  employment_status: 4,
 };
 
 /** How much cheaper marginals are than the cross-product, per (topic, region, day, tier). */

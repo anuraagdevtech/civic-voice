@@ -13,8 +13,8 @@ import { dayOf } from './time.ts';
 /**
  * Rollup key derivation — the bounded fan-out that makes 1B users tractable (ADR-0002).
  *
- * Per event we touch `regions × (dimensions + 1)` counters: 4 × 7 = **28**, with the marginal of
- * each demographic dimension maintained independently. Crossing the six dimensions would be 7,200
+ * Per event we touch `regions × (dimensions + 1)` counters: 4 × 8 = **32**, with the marginal of
+ * each demographic dimension maintained independently. Crossing the seven dimensions would be 28,800
  * combinations per (topic, region, day, tier) and billions of rows a day, for questions almost
  * nobody asks; those are answered on demand from ClickHouse instead.
  */
@@ -96,7 +96,7 @@ export function rollupKeysFor(event: SentimentEvent): RollupKey[] {
   return keys;
 }
 
-/** The count asserted by docs/SCALING.md §5. Upper bound: all six dimensions, full region path. */
+/** The count asserted by docs/SCALING.md §5. Upper bound: every dimension, full region path. */
 export function maxKeysPerEvent(): number {
   return rollupAncestors([1, 2, 3, 4, 5]).length * (DEMOGRAPHIC_DIMENSIONS.length + 1);
 }

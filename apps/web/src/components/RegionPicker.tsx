@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   AGE_BANDS,
+  EMPLOYMENT_STATUSES,
   GENDERS,
   LOCALES,
   OCCUPATION_BANDS,
@@ -21,6 +22,14 @@ const OCCUPATION_LABELS: Record<string, string> = {
   retired_other: 'Retired / other',
 };
 
+/** The PLFS distinctions, in words a person would use about themselves. */
+const EMPLOYMENT_LABELS: Record<string, string> = {
+  employed_regular: 'Working — regular salary',
+  employed_irregular: 'Working — casual or seasonal',
+  unemployed_seeking: 'Not working, looking for work',
+  not_in_labour_force: 'Not looking (studying, home, retired)',
+};
+
 /**
  * Region and demographics.
  *
@@ -39,6 +48,7 @@ export function RegionPicker({
   const [gender, setGender] = useState('');
   const [urbanity, setUrbanity] = useState('');
   const [occupation, setOccupation] = useState('');
+  const [employment, setEmployment] = useState('');
   /** Set when the chosen region came from the device's location and the person confirmed it. */
   const [attestation, setAttestation] = useState<string | null>(null);
   const [locale, setLocale] = useState('en');
@@ -86,6 +96,7 @@ export function RegionPicker({
           ...(gender ? { gender: gender as never } : {}),
           ...(urbanity ? { urbanity: urbanity as never } : {}),
           ...(occupation ? { occupation_band: occupation as never } : {}),
+          ...(employment ? { employment_status: employment as never } : {}),
         },
         ...(attestation ? { location_attestation: attestation } : {}),
       });
@@ -210,6 +221,18 @@ export function RegionPicker({
             {OCCUPATION_BANDS.map((o) => (
               <option key={o} value={o}>
                 {OCCUPATION_LABELS[o] ?? o}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="k">Employment</span>
+          <br />
+          <select value={employment} onChange={(e) => setEmployment(e.target.value)}>
+            <option value="">Prefer not to say</option>
+            {EMPLOYMENT_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {EMPLOYMENT_LABELS[s] ?? s}
               </option>
             ))}
           </select>

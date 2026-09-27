@@ -95,21 +95,22 @@ Naively, aggregates explode. The bound is explicit and enforced in code
 
 - **Region fan-out is 4, not 800k.** An event rolls up only along its own ancestor chain:
   country → state → district → constituency. Not to every region.
-- **Demographic dimensions are marginal, not crossed.** 6 dimensions (age band 6, gender 3,
-  urbanity 2, income band 5, education 5, occupation 8) = 29 values + 1 total = **30 buckets**,
-  handled as 7 independent increments (6 dims + total). Crossing them would be 7,200 buckets.
+- **Demographic dimensions are marginal, not crossed.** 7 dimensions (age band 6, gender 3,
+  urbanity 2, income band 5, education 5, occupation 8, employment status 4) = 33 values + 1 total
+  = **34 buckets**, handled as 8 independent increments (7 dims + total). Crossing them would be
+  28,800 buckets.
 
-So per event: `4 regions × 7 = 28 counter increments`.
+So per event: `4 regions × 8 = 32 counter increments`.
 
-- 150M events/day × 28 = **4.2B counter touches/day = 49k/s average**, **4.9M/s at the spike**.
+- 150M events/day × 32 = **4.8B counter touches/day = 56k/s average**, **5.6M/s at the spike**.
 - A bucket is a 6-field Redis hash — a 5-slot mood histogram plus summed intensity — so one touch
-  is **two `HINCRBY`s**: 9.8M commands/s at the spike. `n` and the mean mood are *derived* from the
+  is **two `HINCRBY`s**: 11.2M commands/s at the spike. `n` and the mean mood are *derived* from the
   histogram rather than stored, which halves the command count and removes any way for `n` and the
   histogram to drift apart.
-- At ~1M pipelined ops/s per shard, **64 shards runs at ~15% utilisation** at the spike
-  (152k commands/s/shard) and is negligible at average load. Sizing assumes no batching, so the
+- At ~1M pipelined ops/s per shard, **64 shards runs at ~17% utilisation** at the spike
+  (174k commands/s/shard) and is negligible at average load. Sizing assumes no batching, so the
   worker's windowed merge below is headroom rather than a dependency.
-- Persisted daily: ~50k active (topic, region) pairs × 30 buckets ≈ **1.5M rows/day** in
+- Persisted daily: ~50k active (topic, region) pairs × 34 buckets ≈ **1.7M rows/day** in
   ClickHouse. Trivially small.
 
 The worker merges mutations in memory over a short window before flushing. Because the event log
@@ -166,8 +167,8 @@ The dominant *levers*, in order:
 
 1. **Edge hit rate.** Going from 98% → 99% halves origin fleet. Hence low-cardinality URLs.
 2. **Compression + tiering.** 90-day hot window, Parquet after; ~6× on the event log.
-3. **Marginals over cross-products.** A 240× reduction in rollup rows written (7,200 crossed vs.
-   30 marginal, per topic·region·day·tier) — and ~1.5M rows/day instead of ~1.4B.
+3. **Marginals over cross-products.** An ~850× reduction in rollup rows written (28,800 crossed vs.
+   34 marginal, per topic·region·day·tier) — and ~1.7M rows/day instead of ~5.8B.
 4. **Read replicas over bigger primaries.** The catalogue is read-mostly and cacheable.
 
 ## 10. What we deliberately do *not* do

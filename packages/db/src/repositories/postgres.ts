@@ -54,6 +54,7 @@ function toCitizen(row: Row): CitizenRow {
       income_band: asNumber(row['income_band']),
       education_band: asNumber(row['education_band']),
       occupation_band: asNumber(row['occupation_band']),
+      employment_status: asNumber(row['employment_status']),
     }),
     region_basis: Number(row['region_basis'] ?? 0) === 1 ? 'device' : 'declared',
     created_at: asTimestamp(row['created_at']),
@@ -65,7 +66,8 @@ function toCitizen(row: Row): CitizenRow {
 }
 
 const CITIZEN_COLUMNS = `id, region_id, region_path, verification_tier, locale,
-  age_band, gender, urbanity, income_band, education_band, occupation_band, region_basis,
+  age_band, gender, urbanity, income_band, education_band, occupation_band, employment_status,
+  region_basis,
   created_at, erased_at`;
 
 export class PgCitizenRepository implements CitizenRepository {
@@ -81,8 +83,9 @@ export class PgCitizenRepository implements CitizenRepository {
       const { rows } = await db.query<Row>(
         `INSERT INTO civic_shard.citizen
            (id, vshard, region_id, region_path, verification_tier, locale,
-            age_band, gender, urbanity, income_band, education_band, occupation_band, region_basis)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            age_band, gender, urbanity, income_band, education_band, occupation_band, region_basis,
+            employment_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING ${CITIZEN_COLUMNS}`,
         [
           input.id,
@@ -98,6 +101,7 @@ export class PgCitizenRepository implements CitizenRepository {
           d.education_band,
           d.occupation_band,
           input.region_basis === 'device' ? 1 : 0,
+          d.employment_status,
         ],
       );
       return toCitizen(rows[0] as Row);
@@ -148,6 +152,7 @@ export class PgCitizenRepository implements CitizenRepository {
            education_band  = CASE WHEN $5::boolean  THEN $10::smallint ELSE education_band  END,
            occupation_band = CASE WHEN $5::boolean  THEN $11::smallint ELSE occupation_band END,
            region_basis    = COALESCE($12::smallint, region_basis),
+           employment_status = CASE WHEN $5::boolean THEN $13::smallint ELSE employment_status END,
            updated_at      = now()
          WHERE id = $1 AND erased_at IS NULL
          RETURNING ${CITIZEN_COLUMNS}`,
@@ -164,6 +169,7 @@ export class PgCitizenRepository implements CitizenRepository {
           d?.education_band ?? null,
           d?.occupation_band ?? null,
           basis,
+          d?.employment_status ?? null,
         ],
       );
       return rows[0] ? toCitizen(rows[0]) : null;
@@ -192,6 +198,7 @@ export class PgCitizenRepository implements CitizenRepository {
         `UPDATE civic_shard.citizen SET
            dek_wrapped = NULL, age_band = NULL, gender = NULL, urbanity = NULL,
            income_band = NULL, education_band = NULL, occupation_band = NULL,
+           employment_status = NULL,
            erased_at = now(), updated_at = now()
          WHERE id = $1 AND erased_at IS NULL`,
         [citizenId],

@@ -28,6 +28,7 @@ const DIMENSIONS: Array<{ value: DemographicDimension | ''; label: string }> = [
   { value: 'income_band', label: 'By income' },
   { value: 'education_band', label: 'By education' },
   { value: 'occupation_band', label: 'By occupation' },
+  { value: 'employment_status', label: 'By employment' },
 ];
 
 export function TopicCard({

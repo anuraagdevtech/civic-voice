@@ -1,6 +1,7 @@
 import {
   AGE_BANDS,
   EDUCATION_BANDS,
+  EMPLOYMENT_STATUSES,
   GENDERS,
   INCOME_BANDS,
   OCCUPATION_BANDS,
@@ -49,6 +50,7 @@ export const codec = {
   income_band: encoder(INCOME_BANDS),
   education_band: encoder(EDUCATION_BANDS),
   occupation_band: encoder(OCCUPATION_BANDS),
+  employment_status: encoder(EMPLOYMENT_STATUSES),
   reason_code: encoder(REASON_CODES),
 } as const;
 
@@ -59,6 +61,7 @@ export interface DemographicOrdinals {
   income_band: number | null;
   education_band: number | null;
   occupation_band: number | null;
+  employment_status: number | null;
 }
 
 export function encodeDemographics(d: Demographics): DemographicOrdinals {
@@ -69,6 +72,7 @@ export function encodeDemographics(d: Demographics): DemographicOrdinals {
     income_band: codec.income_band.encode(d.income_band),
     education_band: codec.education_band.encode(d.education_band),
     occupation_band: codec.occupation_band.encode(d.occupation_band),
+    employment_status: codec.employment_status.encode(d.employment_status),
   };
 }
 
@@ -86,6 +90,8 @@ export function decodeDemographics(row: Partial<DemographicOrdinals>): Demograph
   if (education !== undefined) out.education_band = education;
   const occupation = codec.occupation_band.decode(row.occupation_band);
   if (occupation !== undefined) out.occupation_band = occupation;
+  const employment = codec.employment_status.decode(row.employment_status);
+  if (employment !== undefined) out.employment_status = employment;
   return out;
 }
 
@@ -117,6 +123,12 @@ export const VOCABULARY_FINGERPRINT = {
     'homemaker',
     'retired_other',
   ],
+  employment_status: [
+    'employed_regular',
+    'employed_irregular',
+    'unemployed_seeking',
+    'not_in_labour_force',
+  ],
   reason_code: [
     'unaware',
     'not_consulted',
@@ -138,5 +150,6 @@ export const LIVE_VOCABULARIES = {
   income_band: INCOME_BANDS,
   education_band: EDUCATION_BANDS,
   occupation_band: OCCUPATION_BANDS,
+  employment_status: EMPLOYMENT_STATUSES,
   reason_code: REASON_CODES,
 } as const;

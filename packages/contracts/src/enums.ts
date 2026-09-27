@@ -49,11 +49,26 @@ export const OCCUPATION_BANDS = [
 export type OccupationBand = (typeof OCCUPATION_BANDS)[number];
 
 /**
- * The six demographic dimensions, in a fixed order. The index is part of the storage format
- * (`mood_rollup.dim`), where 0 is reserved for "total, undifferentiated".
+ * Employment status, which occupation does not capture: a graduate in a private job and one who has
+ * been looking for a year share an occupation band and nothing else. Coarse, after the activity
+ * status of the Periodic Labour Force Survey — in regular work, in irregular or part-time work,
+ * unemployed and looking, not in the labour force (studying, caring, retired).
+ */
+export const EMPLOYMENT_STATUSES = [
+  'employed_regular',
+  'employed_irregular',
+  'unemployed_seeking',
+  'not_in_labour_force',
+] as const;
+export type EmploymentStatus = (typeof EMPLOYMENT_STATUSES)[number];
+
+/**
+ * The seven demographic dimensions, in a fixed order. The index is part of the storage format
+ * (`mood_rollup.dim`), where 0 is reserved for "total, undifferentiated" — so a new dimension is
+ * appended, never inserted.
  *
- * Crossing these would be 7,200 combinations per (topic, region, day, tier). We maintain
- * marginals instead — 6 dimensions + 1 total — see ADR-0002.
+ * Crossing these would be 28,800 combinations per (topic, region, day, tier). We maintain
+ * marginals instead — 7 dimensions + 1 total — see ADR-0002.
  */
 export const DEMOGRAPHIC_DIMENSIONS = [
   'age_band',
@@ -62,6 +77,7 @@ export const DEMOGRAPHIC_DIMENSIONS = [
   'income_band',
   'education_band',
   'occupation_band',
+  'employment_status',
 ] as const;
 export type DemographicDimension = (typeof DEMOGRAPHIC_DIMENSIONS)[number];
 
@@ -84,6 +100,7 @@ export const DIMENSION_BUCKETS = {
   income_band: INCOME_BANDS,
   education_band: EDUCATION_BANDS,
   occupation_band: OCCUPATION_BANDS,
+  employment_status: EMPLOYMENT_STATUSES,
 } as const satisfies Record<DemographicDimension, readonly string[]>;
 
 /**

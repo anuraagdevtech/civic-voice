@@ -55,19 +55,19 @@ describe('capacity model matches the published figures', () => {
     assert.ok(degraded.originReadsPerSecondAtSpike > c.originReadsPerSecondAtSpike * 1.9);
   });
 
-  test('rollup fan-out is 28 counters per event, and the model agrees with the code', () => {
-    assert.equal(c.rollupKeysPerEvent, 28);
+  test('rollup fan-out is 32 counters per event, and the model agrees with the code', () => {
+    assert.equal(c.rollupKeysPerEvent, 32);
     assert.equal(c.rollupKeysPerEvent, maxKeysPerEvent(), 'model and rollup code must not drift');
-    approx(c.rollupIncrementsPerDay, 4_200_000_000);
-    approx(c.avgRollupIncrementsPerSecond, 48_000, 0.05);
+    approx(c.rollupIncrementsPerDay, 4_800_000_000);
+    approx(c.avgRollupIncrementsPerSecond, 55_600, 0.05);
   });
 
   test('the counter cluster runs well inside its capacity at spike', () => {
     // Each counter touch is two HINCRBYs, so commands are 2x the touch count. Getting this wrong
     // is exactly how a Redis fleet ends up under-provisioned by 2x.
-    approx(c.spikeRollupIncrementsPerSecond, 4_900_000, 0.05);
+    approx(c.spikeRollupIncrementsPerSecond, 5_600_000, 0.05);
     assert.equal(c.redisCommandsPerSecondAtSpike, c.spikeRollupIncrementsPerSecond * 2);
-    approx(c.redisCommandsPerSecondPerShardAtSpike, 152_000, 0.05);
+    approx(c.redisCommandsPerSecondPerShardAtSpike, 174_000, 0.05);
     assert.ok(
       c.redisUtilisationAtSpike < 0.25,
       `spike utilisation ${(c.redisUtilisationAtSpike * 100).toFixed(1)}% leaves too little headroom`,
@@ -103,9 +103,9 @@ describe('capacity model matches the published figures', () => {
     );
   });
 
-  test('marginals are 240x cheaper than the cross-product', () => {
-    assert.equal(crossProductCardinality(), 7_200);
-    assert.equal(Math.round(marginalSavingsFactor()), 240);
+  test('marginals are ~850x cheaper than the cross-product', () => {
+    assert.equal(crossProductCardinality(), 28_800);
+    assert.equal(Math.round(marginalSavingsFactor()), 847);
   });
 });
 

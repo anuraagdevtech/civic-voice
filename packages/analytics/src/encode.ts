@@ -15,6 +15,7 @@ export function encodeDemographicsForAnalytics(d: Demographics): Record<string, 
     income_band: codec.income_band.encode(d.income_band),
     education_band: codec.education_band.encode(d.education_band),
     occupation_band: codec.occupation_band.encode(d.occupation_band),
+    employment_status: codec.employment_status.encode(d.employment_status),
   };
 }
 
