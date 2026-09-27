@@ -16,8 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The pnpm version comes from `packageManager` in package.json; naming one here as well makes
+      # the action refuse to run.
       - uses: pnpm/action-setup@v4
-        with: { version: 10 }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -48,14 +49,6 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s
           --health-timeout 5s --health-retries 10
-      clickhouse:
-        image: clickhouse/clickhouse-server:24.8-alpine
-        env:
-          CLICKHOUSE_USER: civic
-          CLICKHOUSE_PASSWORD: civic
-          CLICKHOUSE_DB: civic
-          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
-        ports: ['8123:8123']
     env:
       CIVIC_CATALOGUE_URL: postgres://civic:civic@127.0.0.1:5432/civic
       CIVIC_SHARD_URLS: postgres://civic:civic@127.0.0.1:5432/civic
@@ -66,11 +59,23 @@ jobs:
       CLICKHOUSE_DB: civic
     steps:
       - uses: actions/checkout@v4
+      # The pnpm version comes from `packageManager` in package.json; naming one here as well makes
+      # the action refuse to run.
       - uses: pnpm/action-setup@v4
-        with: { version: 10 }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # Not a service container: those start before checkout, and the schema needs the tiered storage
+      # policy from infra/docker/clickhouse/storage.xml — the same file docker-compose mounts.
+      - name: Start ClickHouse with the tiered storage policy
+        run: |
+          docker run -d --name clickhouse -p 8123:8123 \
+            -e CLICKHOUSE_USER=civic -e CLICKHOUSE_PASSWORD=civic -e CLICKHOUSE_DB=civic \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+            -v "$PWD/infra/docker/clickhouse/storage.xml:/etc/clickhouse-server/config.d/storage.xml:ro" \
+            clickhouse/clickhouse-server:24.8-alpine
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8123/ping && exit 0; sleep 1; done
+          docker logs clickhouse; exit 1
       - run: pnpm migrate
       - run: pnpm seed
       - run: node packages/analytics/src/cli/migrate.ts
@@ -82,8 +87,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The pnpm version comes from `packageManager` in package.json; naming one here as well makes
+      # the action refuse to run.
       - uses: pnpm/action-setup@v4
-        with: { version: 10 }
       - uses: actions/setup-node@v4
         with: { node-version: '22', cache: pnpm }
       - run: pnpm install --frozen-lockfile
