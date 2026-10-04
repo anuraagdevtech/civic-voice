@@ -1,0 +1,41 @@
+{
+  "name": "civic-voice",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Civic Voice \u2014 public sentiment, RTI tracking and tax-utilisation transparency at national scale.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p apps/web/tsconfig.json && tsc -p apps/mobile/tsconfig.json",
+    "test": "node --test --test-reporter=spec \"packages/*/test/**/*.test.ts\" \"services/*/test/**/*.test.ts\"",
+    "test:integration": "CIVIC_INTEGRATION=1 node --test --test-reporter=spec \"services/*/test/integration/*.test.ts\" \"packages/*/test/integration/*.test.ts\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d --wait",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down -v",
+    "migrate": "node packages/db/src/cli/migrate.ts",
+    "seed": "node packages/db/src/cli/seed.ts",
+    "dev:api": "node --watch services/api/src/main.ts",
+    "dev:worker": "node --watch services/worker/src/main.ts",
+    "dev:web": "pnpm --filter @civic-voice/web dev",
+    "loadtest": "node infra/loadtest/run.ts",
+    "e2e": "node infra/e2e/run.mjs",
+    "nlp:evaluate": "node packages/nlp/src/cli/evaluate.ts",
+    "dev:ingestor": "node --watch services/ingestor/src/main.ts",
+    "ingest:check": "node services/ingestor/src/cli/check.ts",
+    "ingest:run": "node services/ingestor/src/cli/run.ts",
+    "indicators:load": "node services/ingestor/src/cli/load-indicators.ts",
+    "finance:load": "node services/ingestor/src/cli/load-finance.ts",
+    "dev:stack": "node infra/dev/memory-stack.ts",
+    "dev:demo": "node infra/dev/memory-stack.ts --demo"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "playwright": "^1.63.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

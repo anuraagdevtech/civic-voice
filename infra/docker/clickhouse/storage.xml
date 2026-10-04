@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<!--
+  Tiered storage policy.
+
+  The table schema is identical in every environment: `sentiment_event` declares
+  `TTL ... TO VOLUME 'cold'` and `storage_policy = 'tiered'`. Only what backs the cold volume differs
+  — a local disk here, object storage in production — so a developer exercises the same DDL and the
+  same TTL behaviour that runs in production, rather than a weakened dev-only variant.
+
+  Production replaces the <cold> disk with an s3 disk:
+
+    <cold>
+      <type>s3</type>
+      <endpoint>https://s3.ap-south-1.amazonaws.com/civic-voice-cold/clickhouse/</endpoint>
+      <use_environment_credentials>true</use_environment_credentials>
+    </cold>
+-->
+<clickhouse>
+  <storage_configuration>
+    <disks>
+      <hot>
+        <path>/var/lib/clickhouse/hot/</path>
+      </hot>
+      <cold>
+        <path>/var/lib/clickhouse/cold/</path>
+      </cold>
+    </disks>
+    <policies>
+      <tiered>
+        <volumes>
+          <hot>
+            <disk>hot</disk>
+          </hot>
+          <cold>
+            <disk>cold</disk>
+          </cold>
+        </volumes>
+      </tiered>
+    </policies>
+  </storage_configuration>
+</clickhouse>

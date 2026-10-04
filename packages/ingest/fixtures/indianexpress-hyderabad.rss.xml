@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SYNTHETIC FIXTURE: RSS 2.0, approximating a city news feed. Headlines and content are invented. -->
+<rss version="2.0">
+  <channel>
+    <title>Hyderabad News</title>
+    <link>https://indianexpress.com/section/cities/hyderabad/</link>
+    <description>Hyderabad news</description>
+    <item>
+      <title>Uppal flyover works to finish by March, GHMC tells residents</title>
+      <link>https://indianexpress.com/article/cities/hyderabad/uppal-flyover-works-9900001/</link>
+      <pubDate>Fri, 18 Sep 2026 09:15:00 +0530</pubDate>
+      <description>Commuters on the Warangal highway have faced delays for two years; the corporation says the remaining spans will be completed by March.</description>
+    </item>
+    <item>
+      <title>Heavy rain: control room opened as Gachibowli and Madhapur report waterlogging</title>
+      <link>https://indianexpress.com/article/cities/hyderabad/heavy-rain-control-room-9900002/?utm_source=rss</link>
+      <pubDate>Thu, 17 Sep 2026 21:40:00 +0530</pubDate>
+      <description>The disaster response teams were deployed at vulnerable points in the IT corridor, officials said.</description>
+    </item>
+  </channel>
+</rss>

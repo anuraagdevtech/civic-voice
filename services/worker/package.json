@@ -1,0 +1,23 @@
+{
+  "name": "@civic-voice/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@civic-voice/analytics": "workspace:*",
+    "@civic-voice/cache": "workspace:*",
+    "@civic-voice/contracts": "workspace:*",
+    "@civic-voice/core": "workspace:*",
+    "@civic-voice/db": "workspace:*",
+    "@civic-voice/geo": "workspace:*",
+    "@civic-voice/ingest": "workspace:*",
+    "@civic-voice/nlp": "workspace:*",
+    "@civic-voice/observability": "workspace:*",
+    "@civic-voice/stream": "workspace:*"
+  }
+}

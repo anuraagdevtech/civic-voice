@@ -1,0 +1,16 @@
+{
+  "name": "@civic-voice/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@civic-voice/contracts": "workspace:*",
+    "@civic-voice/core": "workspace:*",
+    "@civic-voice/observability": "workspace:*",
+    "@clickhouse/client": "^1.10.0",
+    "@civic-voice/db": "workspace:*"
+  }
+}

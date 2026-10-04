@@ -1,0 +1,856 @@
+/*
+ * Dark-first, high-contrast, and sized for a low-end Android phone on a slow connection — which is
+ * what most of this audience is using. No web fonts, no icon library, no CSS framework: the whole
+ * stylesheet is a few kilobytes and renders before any JavaScript arrives.
+ */
+:root {
+  --bg: #0b1020;
+  --surface: #151b32;
+  --surface-2: #1d2442;
+  --border: #2c3558;
+  --text: #eef1fa;
+  --text-dim: #a7b0cd;
+  --accent: #6c8cff;
+
+  /* The five-point mood scale, in a colourblind-safe diverging ramp. */
+  --mood--2: #e05c5c;
+  --mood--1: #e0925c;
+  --mood-0: #8b93b0;
+  --mood-1: #5cb5c4;
+  --mood-2: #5cc48b;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg: #f6f7fb;
+    --surface: #ffffff;
+    --surface-2: #eef1f8;
+    --border: #d5dae8;
+    --text: #131829;
+    --text-dim: #566080;
+    /* The mood ramp is darkened for contrast against a light surface. */
+    --mood--2: #c33c3c;
+    --mood--1: #b9702c;
+    --mood-0: #6b7391;
+    --mood-1: #2f8d9c;
+    --mood-2: #2f9c66;
+    color-scheme: light;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.55 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Noto Sans',
+    'Noto Sans Devanagari',
+    sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+.app {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+header.masthead {
+  padding: 20px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+header.masthead h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+header.masthead p {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+nav.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 16px 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+nav.tabs button {
+  appearance: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+nav.tabs button[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.card h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.card .meta {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.mood-scale {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mood-scale button {
+  flex: 1 1 96px;
+  min-height: 44px; /* a real touch target */
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 6px;
+}
+.mood-scale button[aria-pressed='true'] {
+  border-color: currentColor;
+  font-weight: 600;
+}
+.mood-scale button[data-mood='-2'] {
+  color: var(--mood--2);
+}
+.mood-scale button[data-mood='-1'] {
+  color: var(--mood--1);
+}
+.mood-scale button[data-mood='0'] {
+  color: var(--mood-0);
+}
+.mood-scale button[data-mood='1'] {
+  color: var(--mood-1);
+}
+.mood-scale button[data-mood='2'] {
+  color: var(--mood-2);
+}
+
+.bars {
+  margin: 14px 0 6px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 52px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+.bar-row .label {
+  color: var(--text-dim);
+}
+.bar-track {
+  background: var(--surface-2);
+  border-radius: 4px;
+  height: 16px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+.bar-row .value {
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.suppressed {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 13px;
+}
+
+.notice {
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+  padding: 10px 12px;
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 12px 0;
+}
+.notice strong {
+  color: var(--text);
+}
+.notice.warn {
+  border-left-color: var(--mood--1);
+}
+
+.stat-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.stat {
+  min-width: 108px;
+}
+.stat .n {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.stat .k {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+select,
+input,
+button.primary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 14px;
+  min-height: 40px;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1020;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The ledger has six columns and has to survive a 360px phone, so it scrolls horizontally inside
+   its own container rather than pushing the page sideways. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+table.ledger {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.ledger th,
+table.ledger td {
+  text-align: left;
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--border);
+}
+table.ledger th {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+table.ledger td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.deadline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.deadline .statute {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.deadline.breached {
+  color: var(--mood--2);
+}
+
+footer.fine {
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 24px 0;
+  line-height: 1.6;
+}
+
+@media (max-width: 480px) {
+  .app {
+    padding: 12px;
+  }
+  .bar-row {
+    grid-template-columns: 72px 1fr 44px;
+  }
+}
+
+/* ─────────────────────────── The forum ─────────────────────────── */
+
+.banner {
+  background: var(--mood--1);
+  color: #0b1020;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+nav.tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+nav.tabs button {
+  white-space: nowrap;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+button.chip {
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  min-height: 34px;
+}
+button.chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+.badge.sample {
+  background: transparent;
+  color: var(--mood--1);
+  border-color: var(--mood--1);
+}
+.badge.local {
+  color: var(--mood-1);
+  border-color: var(--mood-1);
+}
+
+button.link {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 14px;
+  min-height: 40px;
+  cursor: pointer;
+}
+a {
+  color: var(--accent);
+}
+
+.list-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font: inherit;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.list-item:last-child {
+  border-bottom: none;
+}
+.list-item .title {
+  font-size: 15px;
+  line-height: 1.4;
+}
+.list-item .sub {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Digest: what people think, and what needs to be done. */
+.digest .tone {
+  font-size: 15px;
+  margin: 4px 0 10px;
+}
+.split {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 8px 0 4px;
+  background: var(--surface-2);
+}
+.split span {
+  height: 100%;
+}
+.digest ol {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+.digest li {
+  margin-bottom: 6px;
+}
+.support {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 6px;
+}
+
+/* Comments. */
+textarea {
+  width: 100%;
+  min-height: 88px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+  font-size: 15px;
+  resize: vertical;
+}
+input[type='text'] {
+  width: 100%;
+}
+.comment {
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+.comment.reply {
+  margin-left: 18px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+  border-top: none;
+}
+.comment .who {
+  font-size: 12px;
+  color: var(--text-dim);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.comment .who strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.comment .body {
+  margin: 6px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.comment .actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 13px;
+}
+.comment .actions button {
+  appearance: none;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 0;
+  cursor: pointer;
+  min-height: 32px;
+}
+.comment .actions button[aria-pressed='true'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.sentiment-negative {
+  color: var(--mood--2);
+}
+.sentiment-neutral {
+  color: var(--mood-0);
+}
+.sentiment-positive {
+  color: var(--mood-2);
+}
+
+.need-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 48px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.need-row .track {
+  position: relative;
+  height: 14px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.need-row .fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+}
+.need-row .everyone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text);
+  opacity: 0.7;
+}
+.need-row .value {
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.big {
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+@media (max-width: 480px) {
+  .need-row {
+    grid-template-columns: 110px 1fr 40px;
+  }
+}
+
+/*
+ * Charts. Series colours are the validated categorical slots, stepped for each theme and checked
+ * against THIS app's surfaces (#151b32 dark, #ffffff light) for lightness band, chroma, colour-vision
+ * separation between neighbours, and contrast. Each class sets `--c`, so a mark, its legend swatch and
+ * its tooltip key share one colour; text never wears it.
+ */
+:root {
+  --viz-s1: #3987e5;
+  --viz-s2: #d95926;
+  --viz-s3: #199e70;
+  --viz-s4: #c98500;
+  /* The de-emphasis grey: "the rest" in an emphasis chart. */
+  --viz-muted: #4a5377;
+  --viz-hatch: #7b83a3;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --viz-s1: #2a78d6;
+    --viz-s2: #eb6834;
+    --viz-s3: #1baf7a;
+    --viz-s4: #eda100;
+    --viz-muted: #c3c8d8;
+    --viz-hatch: #8a91a8;
+  }
+}
+.viz-s1 {
+  --c: var(--viz-s1);
+}
+.viz-s2 {
+  --c: var(--viz-s2);
+}
+.viz-s3 {
+  --c: var(--viz-s3);
+}
+.viz-s4 {
+  --c: var(--viz-s4);
+}
+.viz-muted {
+  --c: var(--viz-muted);
+}
+.viz-h {
+  font-size: 14px;
+  margin: 18px 0 6px;
+}
+.viz-dim {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* Ranked bars: one baseline, value at the tip, 4px rounded data-end, square at the baseline. */
+.viz-bar-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 13px;
+  border-radius: 4px;
+}
+.viz-bar-track {
+  display: block;
+  height: 14px;
+  border-left: 1px solid var(--border);
+}
+.viz-bar {
+  display: block;
+  height: 14px;
+  background: var(--c);
+  border-radius: 0 4px 4px 0;
+}
+.viz-bar-value {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.viz-bar-row:hover .viz-bar,
+.viz-bar-row:focus-visible .viz-bar,
+.viz-seg:hover,
+.viz-seg:focus-visible {
+  filter: brightness(1.15);
+}
+
+/* Part-to-whole: one 100% stack, 2px surface gaps between segments. */
+.viz-stack {
+  display: flex;
+  gap: 2px;
+  height: 26px;
+  margin: 6px 0;
+}
+.viz-seg {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3px;
+  background: var(--c);
+}
+.viz-seg.last {
+  border-radius: 0 4px 4px 0;
+}
+.viz-seg-label {
+  font-size: 12px;
+  font-weight: 600;
+  /* Inside a fill: ink chosen for the fill's luminance, which clears contrast on all four slots. */
+  color: #0b0b0b;
+}
+.viz-unexplained {
+  background:
+    repeating-linear-gradient(45deg, var(--viz-hatch) 0 2px, transparent 2px 6px), var(--surface-2);
+}
+
+/* Tooltips: on hover and on keyboard focus; the value leads, the label follows. */
+.viz-tip {
+  display: none;
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 6px);
+  left: 0;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+  max-width: min(280px, 80vw);
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: left;
+  pointer-events: none;
+}
+.viz-tip strong {
+  font-size: 14px;
+}
+.viz-tip span {
+  color: var(--text-dim);
+}
+.viz-seg .viz-tip {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.viz-seg.first .viz-tip {
+  left: 0;
+  transform: none;
+}
+.viz-seg.last .viz-tip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.viz-bar-row:hover .viz-tip,
+.viz-bar-row:focus .viz-tip,
+.viz-seg:hover .viz-tip,
+.viz-seg:focus .viz-tip {
+  display: flex;
+}
+.viz-key {
+  display: inline-block;
+  width: 12px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: var(--c);
+}
+
+.viz-legend {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+}
+.viz-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: -1px;
+  background: var(--c);
+}
+.viz-swatch.viz-unexplained {
+  background:
+    repeating-linear-gradient(45deg, var(--viz-hatch) 0 2px, transparent 2px 4px), var(--surface-2);
+}
+.viz-table {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.viz-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.viz-table th,
+.viz-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.viz-table td:nth-child(n + 2) {
+  text-align: right;
+}
+.viz-notes {
+  font-size: 13px;
+  color: var(--text-dim);
+  padding-left: 18px;
+}
+
+@media (max-width: 480px) {
+  .viz-bar-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 2px;
+  }
+  .viz-bar-track,
+  .viz-dumb-track {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+/* Dumbbell: two measures in one unit on one axis; the link between the dots is the gap. */
+.viz-dumb-track {
+  position: relative;
+  display: block;
+  height: 16px;
+  border-left: 1px solid var(--border);
+}
+.viz-dumb-link {
+  position: absolute;
+  top: 7px;
+  height: 2px;
+  background: var(--viz-muted);
+}
+.viz-dot {
+  position: absolute;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50%;
+  background: var(--c);
+  /* The surface ring keeps overlapping dots legible. */
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.viz-swatch.round {
+  border-radius: 50%;
+}
+.viz-table {
+  overflow-x: auto;
+}
+.viz-table label {
+  white-space: nowrap;
+}
+.viz-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
+  padding-bottom: 8px;
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@civic-voice/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "@civic-voice/analytics": "workspace:*",
+    "@civic-voice/cache": "workspace:*",
+    "@civic-voice/contracts": "workspace:*",
+    "@civic-voice/core": "workspace:*",
+    "@civic-voice/db": "workspace:*",
+    "@civic-voice/geo": "workspace:*",
+    "@civic-voice/ingest": "workspace:*",
+    "@civic-voice/nlp": "workspace:*",
+    "@civic-voice/observability": "workspace:*",
+    "@civic-voice/stream": "workspace:*",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/helmet": "^13.0.1",
+    "@fastify/under-pressure": "^9.0.3",
+    "fastify": "^5.2.1",
+    "zod": "^3.24.1"
+  }
+}

@@ -1,0 +1,46 @@
+# The ingestor (services/ingestor): polls central and state government portals and news feeds for new
+# GOs, projects, gazette notifications and job notifications, on each source's own interval.
+#
+# Exactly one replica, and Recreate rather than RollingUpdate: politeness (robots.txt, one request per
+# host at a time, Crawl-delay) is enforced in-process, so two live replicas would each be polite and
+# together hit every portal twice. It scales by adding sources, not pods; one per region is plenty.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: civic-ingestor
+  labels: { app: civic-ingestor, tier: worker }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: civic-ingestor }
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels: { app: civic-ingestor, tier: worker }
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: ingestor
+          image: ghcr.io/civic-voice/ingestor:latest
+          env:
+            - { name: CIVIC_ENV, value: production }
+            - { name: CIVIC_INGEST_MODE, value: live }
+          envFrom:
+            # Only the catalogue URL is needed; the citizen shards are deliberately not reachable
+            # (see civic-ingestor-egress).
+            - secretRef: { name: civic-ingestor-secrets }
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ['ALL'] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}

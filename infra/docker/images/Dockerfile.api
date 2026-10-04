@@ -1,0 +1,37 @@
+# Node 22 runs TypeScript directly via type stripping, so there is no build step and no transpiler
+# config to keep in sync between dev and production (ADR-0006). The image ships the source.
+FROM node:22-alpine AS deps
+WORKDIR /app
+RUN corepack enable
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/contracts/package.json    packages/contracts/
+COPY packages/core/package.json         packages/core/
+COPY packages/db/package.json           packages/db/
+COPY packages/cache/package.json        packages/cache/
+COPY packages/stream/package.json       packages/stream/
+COPY packages/analytics/package.json    packages/analytics/
+COPY packages/observability/package.json packages/observability/
+COPY packages/sdk/package.json          packages/sdk/
+COPY packages/nlp/package.json          packages/nlp/
+COPY packages/geo/package.json          packages/geo/
+COPY packages/ingest/package.json       packages/ingest/
+COPY services/api/package.json          services/api/
+# --prod drops the dev dependencies; --frozen-lockfile fails rather than silently resolving
+# something other than what CI tested.
+RUN pnpm install --frozen-lockfile --prod --filter @civic-voice/api...
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production CIVIC_ENV=production
+RUN addgroup -g 10001 -S civic && adduser -u 10001 -S civic -G civic
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages ./packages
+COPY --from=deps /app/services ./services
+COPY packages ./packages
+COPY services/api ./services/api
+COPY package.json pnpm-workspace.yaml ./
+USER civic
+EXPOSE 8080
+# Exec form, so the process is PID 1 and receives SIGTERM directly — which is what makes the
+# graceful drain in main.ts actually run during a scale-down.
+CMD ["node", "services/api/src/main.ts"]

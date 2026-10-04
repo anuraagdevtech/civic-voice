@@ -1,0 +1,20 @@
+{
+  "name": "@civic-voice/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./maintenance": "./src/maintenance.ts"
+  },
+  "dependencies": {
+    "@civic-voice/contracts": "workspace:*",
+    "@civic-voice/core": "workspace:*",
+    "@civic-voice/geo": "workspace:*",
+    "@civic-voice/observability": "workspace:*",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10"
+  }
+}
